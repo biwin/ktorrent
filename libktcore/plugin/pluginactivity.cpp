@@ -18,11 +18,9 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.             *
  ***************************************************************************/
 #include <QVBoxLayout>
-#include <klocale.h>
-#include <kpushbutton.h>
+#include <klocalizedstring.h>
+#include <QPushButton>
 #include <qtreewidget.h>
-#include <kglobal.h>
-#include <kiconloader.h>
 #include <kpluginselector.h>
 #include <util/constants.h>
 #include <util/log.h>

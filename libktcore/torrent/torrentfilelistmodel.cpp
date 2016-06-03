@@ -20,13 +20,15 @@
  ***************************************************************************/
 #include "torrentfilelistmodel.h"
 
-#include <klocale.h>
-#include <kicon.h>
-#include <kmimetype.h>
+#include <klocalizedstring.h>
+#include <QIcon>
+
 #include <QTreeView>
 #include <interfaces/torrentinterface.h>
 #include <interfaces/torrentfileinterface.h>
 #include <util/functions.h>
+#include <QMimeDatabase>
+#include <QMimeType>
 
 using namespace bt;
 
@@ -45,8 +47,9 @@ namespace kt
 
     void TorrentFileListModel::changeTorrent(bt::TorrentInterface* tc)
     {
+        beginResetModel();
         this->tc = tc;
-        reset();
+        endResetModel();
     }
 
 
@@ -89,7 +92,7 @@ namespace kt
         int r = index.row();
         int nfiles = rowCount(QModelIndex());
         bool multi = tc->getStats().multi_file_torrent;
-        if (r < 0 || r >= nfiles)
+        if (r >= nfiles)
             return QVariant();
 
         const TorrentStats& s = tc->getStats();
@@ -130,10 +133,7 @@ namespace kt
         else if (role == Qt::DecorationRole && index.column() == 0)
         {
             // if this is an empty folder then we are in the single file case
-            if (multi)
-                return KIcon(KMimeType::findByPath(tc->getTorrentFile(r).getPath())->iconName());
-            else
-                return KIcon(KMimeType::findByPath(s.torrent_name)->iconName());
+            return QIcon::fromTheme(QMimeDatabase().mimeTypeForFile(multi ? tc->getTorrentFile(r).getPath() : s.torrent_name).iconName());
         }
         else if (role == Qt::CheckStateRole && index.column() == 0 && multi)
         {
@@ -288,7 +288,7 @@ namespace kt
             return 0;
 
         int r = idx.row();
-        if (r < 0 || r >= rowCount(QModelIndex()))
+        if (r >= rowCount(QModelIndex()))
             return 0;
         else
             return &tc->getTorrentFile(r);
@@ -300,7 +300,7 @@ namespace kt
             return QString();
 
         int r = idx.row();
-        if (r < 0 || r >= rowCount(QModelIndex()))
+        if (r >= rowCount(QModelIndex()))
             return QString();
         else
             return tc->getTorrentFile(r).getPath();
@@ -315,4 +315,3 @@ namespace kt
     }
 }
 
-#include "torrentfilelistmodel.moc"

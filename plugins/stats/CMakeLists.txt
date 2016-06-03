@@ -23,15 +23,16 @@ set(ktstatsplugin_SRC
 	DisplaySettingsPage.cc
 )
 
-kde4_add_ui_files(ktstatsplugin_SRC Spd.ui Conns.ui Settings.ui DisplaySettings.ui)
-kde4_add_kcfg_files(ktstatsplugin_SRC statspluginsettings.kcfgc)
-kde4_add_plugin(ktstatsplugin ${ktstatsplugin_SRC})
+ki18n_wrap_ui(ktstatsplugin_SRC Spd.ui Conns.ui Settings.ui DisplaySettings.ui)
+kconfig_add_kcfg_files(ktstatsplugin_SRC statspluginsettings.kcfgc)
+add_library(ktorrent_stats MODULE ${ktstatsplugin_SRC})
+kcoreaddons_desktop_to_json(ktorrent_stats ktorrent_stats.desktop)
 
 target_link_libraries(
-    ktstatsplugin
+    ktorrent_stats
     ktcore
     ${LIBKTORRENT_LIBRARIES}
-    ${KDE4_KPARTS_LIBS}
+    KF5::Parts
+    KF5::Plotting
     )
-install(TARGETS ktstatsplugin  DESTINATION ${PLUGIN_INSTALL_DIR} )
-install(FILES ktstatsplugin.desktop  DESTINATION  ${SERVICES_INSTALL_DIR} )
+install(TARGETS ktorrent_stats  DESTINATION ${KTORRENT_PLUGIN_INSTALL_DIR} )

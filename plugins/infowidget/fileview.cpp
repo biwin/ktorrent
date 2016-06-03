@@ -23,17 +23,21 @@
 #include <QItemSelectionModel>
 #include <QHBoxLayout>
 #include <QToolBar>
-#include <KLocale>
-#include <KIconLoader>
-#include <KGlobal>
-#include <KMenu>
+#include <QFileDialog>
+#include <QFileInfo>
+#include <QMenu>
+#include <QLineEdit>
+#include <QDebug>
+
 #include <KRun>
 #include <KMessageBox>
-#include <KMimeType>
 #include <KSharedConfig>
 #include <KConfigGroup>
-#include <KFileDialog>
-#include <KLineEdit>
+
+#include <klocalizedstring.h>
+#include <kfilewidget.h>
+#include <krecentdirs.h>
+
 #include <util/bitset.h>
 #include <util/error.h>
 #include <util/functions.h>
@@ -41,7 +45,6 @@
 #include <interfaces/functions.h>
 #include <interfaces/torrentinterface.h>
 #include <interfaces/torrentfileinterface.h>
-#include <qfileinfo.h>
 #include <util/log.h>
 #include <util/timer.h>
 #include "iwfiletreemodel.h"
@@ -68,11 +71,11 @@ namespace kt
         toolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
         layout->addWidget(toolbar);
 
-        filter = new KLineEdit(this);
-        filter->setClickMessage(i18n("Filter"));
-        filter->setClearButtonShown(true);
+        filter = new QLineEdit(this);
+        filter->setPlaceholderText(i18n("Filter"));
+        filter->setClearButtonEnabled(true);
         filter->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-        connect(filter, SIGNAL(textChanged(QString)), this, SLOT(setFilter(QString)));
+        connect(filter, &QLineEdit::textChanged, this, &FileView::setFilter);
         filter->hide();
         vbox->addWidget(filter);
         vbox->addWidget(view);
@@ -97,10 +100,8 @@ namespace kt
 
         setupActions();
 
-        connect(view, SIGNAL(customContextMenuRequested(const QPoint&)),
-                this, SLOT(showContextMenu(const QPoint&)));
-        connect(view, SIGNAL(doubleClicked(const QModelIndex&)),
-                this, SLOT(onDoubleClicked(const QModelIndex&)));
+        connect(view, &QTreeView::customContextMenuRequested, this, &FileView::showContextMenu);
+        connect(view, &QTreeView::doubleClicked, this, &FileView::onDoubleClicked);
 
         setEnabled(false);
 
@@ -111,16 +112,16 @@ namespace kt
 
     void FileView::setupActions()
     {
-        context_menu = new KMenu(this);
-        open_action = context_menu->addAction(KIcon("document-open"), i18nc("Open file", "Open"), this, SLOT(open()));
-        open_with_action = context_menu->addAction(KIcon("document-open"), i18nc("Open file with", "Open With"), this, SLOT(openWith()));
-        check_data = context_menu->addAction(KIcon("kt-check-data"), i18n("Check File"), this, SLOT(checkFile()));
+        context_menu = new QMenu(this);
+        open_action = context_menu->addAction(QIcon::fromTheme(QStringLiteral("document-open")), i18nc("Open file", "Open"), this, SLOT(open()));
+        open_with_action = context_menu->addAction(QIcon::fromTheme(QStringLiteral("document-open")), i18nc("Open file with", "Open With"), this, SLOT(openWith()));
+        check_data = context_menu->addAction(QIcon::fromTheme(QStringLiteral("kt-check-data")), i18n("Check File"), this, SLOT(checkFile()));
         context_menu->addSeparator();
         download_first_action = context_menu->addAction(i18n("Download first"), this, SLOT(downloadFirst()));
         download_normal_action = context_menu->addAction(i18n("Download normally"), this, SLOT(downloadNormal()));
         download_last_action = context_menu->addAction(i18n("Download last"), this, SLOT(downloadLast()));
         context_menu->addSeparator();
-        dnd_action = context_menu->addAction(i18n("Do Not Download"), this, SLOT(doNotDownload()));
+        dnd_action = context_menu->addAction(i18n("Do not download"), this, SLOT(doNotDownload()));
         delete_action = context_menu->addAction(i18n("Delete File(s)"), this, SLOT(deleteFiles()));
         context_menu->addSeparator();
         move_files_action = context_menu->addAction(i18n("Move File"), this, SLOT(moveFiles()));
@@ -129,10 +130,10 @@ namespace kt
         expand_action = context_menu->addAction(i18n("Expand Folder Tree"), this, SLOT(expandTree()));
 
         QActionGroup* ag = new QActionGroup(this);
-        show_tree_action = new QAction(KIcon("view-list-tree"), i18n("File Tree"), this);
-        connect(show_tree_action, SIGNAL(triggered(bool)), this, SLOT(showTree()));
-        show_list_action = new QAction(KIcon("view-list-text"), i18n("File List"), this);
-        connect(show_list_action, SIGNAL(triggered(bool)), this, SLOT(showList()));
+        show_tree_action = new QAction(QIcon::fromTheme(QStringLiteral("view-list-tree")), i18n("File Tree"), this);
+        connect(show_tree_action, &QAction::triggered, this, &FileView::showTree);
+        show_list_action = new QAction(QIcon::fromTheme(QStringLiteral("view-list-text")), i18n("File List"), this);
+        connect(show_list_action, &QAction::triggered, this, &FileView::showList);
         ag->addAction(show_list_action);
         ag->addAction(show_tree_action);
         ag->setExclusive(true);
@@ -141,9 +142,9 @@ namespace kt
         toolbar->addAction(show_tree_action);
         toolbar->addAction(show_list_action);
 
-        show_filter_action = new QAction(KIcon("view-filter"), i18n("Show Filter"), this);
+        show_filter_action = new QAction(QIcon::fromTheme(QStringLiteral("view-filter")), i18n("Show Filter"), this);
         show_filter_action->setCheckable(true);
-        connect(show_filter_action, SIGNAL(toggled(bool)), filter, SLOT(setShown(bool)));
+        connect(show_filter_action, &QAction::toggled, filter, &QLineEdit::setVisible);
         toolbar->addAction(show_filter_action);
     }
 
@@ -166,19 +167,23 @@ namespace kt
             view->setRootIsDecorated(!show_list_of_files && tc->getStats().multi_file_torrent);
             if (!show_list_of_files)
             {
-                QMap<bt::TorrentInterface*, QByteArray>::iterator i = expanded_state_map.find(tc);
-                if (i != expanded_state_map.end())
+                auto i = expanded_state_map.constFind(tc);
+                if (i != expanded_state_map.constEnd())
                     model->loadExpandedState(proxy_model, view, i.value());
                 else
                     view->expandAll();
             }
         }
 
+#if 0
         if (!header_state_loaded)
         {
             view->resizeColumnToContents(0);
             header_state_loaded = true;
         }
+#else
+        view->resizeColumnToContents(0);
+#endif
     }
 
     void FileView::onMissingFileMarkedDND(bt::TorrentInterface* tc)
@@ -280,14 +285,12 @@ namespace kt
 
     void FileView::open()
     {
-        new KRun(KUrl(preview_path), 0, 0, true, true);
+        new KRun(QUrl::fromLocalFile(preview_path), 0, true);
     }
 
     void FileView::openWith()
     {
-        KUrl::List urls;
-        urls << KUrl(preview_path);
-        KRun::displayOpenWithDialog(urls, 0);
+        KRun::displayOpenWithDialog({QUrl::fromLocalFile(preview_path)}, 0);
     }
 
 
@@ -350,10 +353,15 @@ namespace kt
             QModelIndexList sel = view->selectionModel()->selectedRows();
             QMap<bt::TorrentFileInterface*, QString> moves;
 
-            QString dir = KFileDialog::getExistingDirectory(KUrl("kfiledialog:///saveTorrentData"),
-                          this, i18n("Select a directory to move the data to."));
-            if (dir.isNull())
+            QString recentDirClass;
+            QString dir = QFileDialog::getExistingDirectory(this, i18n("Select a directory to move the data to."),
+                                                            KFileWidget::getStartUrl(QUrl("kfiledialog:///saveTorrentData"), recentDirClass).toLocalFile());
+
+            if (dir.isEmpty())
                 return;
+
+            if (!recentDirClass.isEmpty())
+                KRecentDirs::add(recentDirClass, dir);
 
             foreach (const QModelIndex& idx, sel)
             {
@@ -371,10 +379,15 @@ namespace kt
         }
         else
         {
-            QString dir = KFileDialog::getExistingDirectory(KUrl("kfiledialog:///saveTorrentData"),
-                          this, i18n("Select a directory to move the data to."));
-            if (dir.isNull())
+            QString recentDirClass;
+            QString dir = QFileDialog::getExistingDirectory(this, i18n("Select a directory to move the data to."),
+                                                            KFileWidget::getStartUrl(QUrl("kfiledialog:///saveTorrentData"), recentDirClass).toLocalFile());
+
+            if (dir.isEmpty())
                 return;
+
+            if (!recentDirClass.isEmpty())
+                KRecentDirs::add(recentDirClass, dir);
 
             tc->changeOutputDir(dir, bt::TorrentInterface::MOVE_FILES);
         }
@@ -420,25 +433,67 @@ namespace kt
         bt::TorrentInterface* tc = curr_tc.data();
         const TorrentStats& s = tc->getStats();
 
+        QString pathToOpen;
+        bool isMultimedia = false;
+        bool isPreviewAvailable = false;
+        int downloadPercentage = 0;
+        int fileIndex = 0;
+
         if (s.multi_file_torrent)
         {
             bt::TorrentFileInterface* file = model->indexToFile(proxy_model->mapToSource(index));
             if (!file)
             {
                 // directory
-                QString path = tc->getStats().output_path + model->dirPath(proxy_model->mapToSource(index));
-                new KRun(KUrl(path), 0, 0, true, true);
+                pathToOpen = s.output_path + model->dirPath(proxy_model->mapToSource(index));
             }
             else
             {
-                // file
-                new KRun(KUrl(file->getPathOnDisk()), 0, 0, true, true);
+                isMultimedia = (file->isVideo() || file->isAudio() || file->isMultimedia()) && !file->doNotDownload();
+                if (isMultimedia)
+                {
+                    isPreviewAvailable = file->isPreviewAvailable();
+                    downloadPercentage = file->getDownloadPercentage();
+                    fileIndex = file->getIndex();
+                }
+                pathToOpen = file->getPathOnDisk();
             }
         }
         else
         {
-            new KRun(KUrl(tc->getStats().output_path), 0, 0, true, true);
+            isMultimedia = tc->isMultimedia();
+            isPreviewAvailable = tc->readyForPreview();
+            if (s.total_bytes) downloadPercentage = 100 - 100*s.total_bytes_to_download/s.total_bytes;
+            pathToOpen = s.output_path;
         }
+
+        if (isMultimedia)
+        {
+            static QList<TorrentFileStream::Ptr> streams;
+            bool doStream = false;
+            if (!isPreviewAvailable)
+            {
+                doStream = KMessageBox::Yes==KMessageBox::questionYesNo(this,
+                    i18n("Not enough data downloaded for opening the file.\n\n"
+                    "Enable sequential download mode for it to obtain necessary data with a higher priority?"),
+                    QString(), KStandardGuiItem::yes(), KStandardGuiItem::no());
+            }
+            else if (downloadPercentage < 90)
+            {
+                doStream = true;
+                //doStream = KMessageBox::Yes==KMessageBox::questionYesNo(this, i18n("Enable sequential download mode for this file?"),
+                //    QString(), KStandardGuiItem::yes(), KStandardGuiItem::no(), QStringLiteral("SequentialModeOnFileOpen"));
+            }
+            if (doStream)
+            {
+                streams << tc->createTorrentFileStream(fileIndex, true, 0);
+                if (streams.last().isNull())
+                    streams << tc->createTorrentFileStream(fileIndex, false, 0);
+            }
+            if (!isPreviewAvailable)
+                return;
+        }
+        new KRun(QUrl::fromLocalFile(pathToOpen), 0, true);
     }
 
     void FileView::saveState(KSharedConfigPtr cfg)
@@ -456,7 +511,7 @@ namespace kt
     {
         KConfigGroup g = cfg->group("FileView");
         QByteArray s = g.readEntry("state", QByteArray());
-        if (!s.isNull())
+        if (!s.isEmpty())
         {
             QHeaderView* v = view->header();
             v->restoreState(QByteArray::fromBase64(s));
@@ -523,8 +578,8 @@ namespace kt
 
         if (!on)
         {
-            QMap<bt::TorrentInterface*, QByteArray>::iterator i = expanded_state_map.find(tc);
-            if (i != expanded_state_map.end())
+            auto i = expanded_state_map.constFind(tc);
+            if (i != expanded_state_map.constEnd())
                 model->loadExpandedState(proxy_model, view, i.value());
             else
                 view->expandAll();
@@ -593,5 +648,3 @@ namespace kt
     }
 
 }
-
-#include "fileview.moc"

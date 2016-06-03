@@ -18,7 +18,6 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  ***************************************************************************/
-#include <Q3MimeSourceFactory>
 #include <QPainter>
 #include <QPen>
 #include <QBrush>
@@ -26,8 +25,7 @@
 #include <QPixmap>
 #include <math.h>
 #include <qtooltip.h>
-#include <klocale.h>
-#include <qmime.h>
+#include <klocalizedstring.h>
 #include <qimage.h>
 #include <util/log.h>
 #include <interfaces/torrentinterface.h>
@@ -43,8 +41,7 @@ namespace kt
 {
 
 
-
-
+#if 0 //KF5
     static void FillAndFrameBlack(QImage* image, const QColor& color, int size)
     {
         image->fill(color.rgb());
@@ -56,8 +53,6 @@ namespace kt
             image->setPixel(i, size - 1, 0);
         }
     }
-
-
 
     static void InitializeToolTipImages(ChunkBar* bar)
     {
@@ -80,6 +75,7 @@ namespace kt
         FillAndFrameBlack(&unavailable, bar->palette().color(QPalette::Active, QPalette::Base), 16);
         factory->setImage("unavailable_color", unavailable);
     }
+#endif
 
     ChunkBar::ChunkBar(QWidget* parent)
         : QFrame(parent)
@@ -89,11 +85,12 @@ namespace kt
         setLineWidth(3);
         setMidLineWidth(3);
 
+#if 0 //KF5
         InitializeToolTipImages(this);
         setToolTip(i18n("<img src=\"available_color\">&nbsp; - Downloaded Chunks<br>"
                         "<img src=\"unavailable_color\">&nbsp; - Chunks to Download<br>"
                         "<img src=\"excluded_color\">&nbsp; - Excluded Chunks"));
-
+#endif
     }
 
 
@@ -127,15 +124,11 @@ namespace kt
     void ChunkBar::drawContents(QPainter* p)
     {
         // first draw background
-        if (isEnabled())
-            p->setBrush(palette().color(QPalette::Active, QPalette::Base));
-        else
-            p->setBrush(palette().color(QPalette::Inactive, QPalette::Base));
-
-        p->setPen(Qt::NoPen);
-        //p->setPen(QPen(Qt::red));
+        bool enable = isEnabled();
+        p->setBrush(palette().color(enable?QPalette::Active:QPalette::Inactive, QPalette::Base));
+        p->setPen(Qt::NoPen); //p->setPen(QPen(Qt::red));
         p->drawRect(contentsRect());
-        if (isEnabled())
+        if (enable)
             p->drawPixmap(contentsRect(), pixmap);
     }
 
@@ -157,5 +150,3 @@ namespace kt
 
 
 }
-
-#include "chunkbar.moc"

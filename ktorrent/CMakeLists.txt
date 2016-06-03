@@ -1,13 +1,10 @@
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
-
 #  set(kt4_SRC app.cpp mainwindow.cpp core.cpp view.cpp viewmodel.cpp main.cpp)
 set(ktorrent_SRC 
-	main.cpp 
-	core.cpp 
-	gui.cpp 
-	app.cpp 
+	main.cpp
+	core.cpp
+	gui.cpp
 	torrentactivity.cpp
-	statusbar.cpp 
+	statusbar.cpp
 	trayicon.cpp
 	ipfilterlist.cpp
 	ipfilterwidget.cpp
@@ -53,7 +50,7 @@ set(ktorrent_SRC
 )
 	
 
-kde4_add_ui_files(ktorrent_SRC 
+ki18n_wrap_ui(ktorrent_SRC
 	ipfilterwidget.ui 
 	
 	dialogs/speedlimitsdlg.ui 
@@ -78,18 +75,26 @@ kde4_add_ui_files(ktorrent_SRC
 	view/propertiesdlg.ui
 )
 
-kde4_add_app_icon(ktorrent_SRC "${CMAKE_CURRENT_SOURCE_DIR}/icons/hi*-app-ktorrent.png")
+#file(GLOB ICONS_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/icons/hi*-app-ktorrent.png")
+#ecm_add_app_icon(ktorrent_SRC ICONS ${ICONS_SRCS})
 
-kde4_add_executable(ktorrent_app ${ktorrent_SRC})
+add_executable(ktorrent_app ${ktorrent_SRC})
 set_target_properties(ktorrent_app  PROPERTIES OUTPUT_NAME ktorrent)
 
-target_link_libraries(ktorrent_app ${LIBKTORRENT_LIBRARIES} ktcore ${KDE4_SOLID_LIBS} ${KDE4_KPARTS_LIBS} ${KDE4_KNOTIFYCONFIG_LIBS})
+target_link_libraries(ktorrent_app
+    ktcore
+    ktorrent
+    KF5::NotifyConfig
+    KF5::Parts
+    KF5::DBusAddons
+    KF5::KDELibs4Support
+)
+
 install(TARGETS ktorrent_app ${INSTALL_TARGETS_DEFAULT_ARGS})
-install(PROGRAMS ktorrent.desktop  DESTINATION  ${XDG_APPS_INSTALL_DIR} )
-install(FILES ktorrentplugin.desktop  DESTINATION  ${SERVICETYPES_INSTALL_DIR} )
-install(FILES ktorrentui.rc DESTINATION ${DATA_INSTALL_DIR}/ktorrent )
-install(FILES kttorrentactivityui.rc DESTINATION ${DATA_INSTALL_DIR}/ktorrent )
-install(FILES ktorrent.notifyrc DESTINATION ${DATA_INSTALL_DIR}/ktorrent )
+install(PROGRAMS org.kde.ktorrent.desktop  DESTINATION  ${XDG_APPS_INSTALL_DIR} )
+install(FILES ktorrentui.rc DESTINATION ${KXMLGUI_INSTALL_DIR}/ktorrent )
+install(FILES kttorrentactivityui.rc DESTINATION ${KXMLGUI_INSTALL_DIR}/ktorrent )
+install(FILES ktorrent.notifyrc DESTINATION ${KNOTIFYRC_INSTALL_DIR} )
 
 
 add_subdirectory(icons)

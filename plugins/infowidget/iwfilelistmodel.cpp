@@ -21,8 +21,7 @@
 #include "iwfilelistmodel.h"
 
 #include <math.h>
-#include <klocale.h>
-#include <kglobal.h>
+#include <klocalizedstring.h>
 #include <util/functions.h>
 #include <interfaces/functions.h>
 #include <interfaces/torrentinterface.h>
@@ -101,7 +100,7 @@ namespace kt
         if (index.column() < 2 && role != Qt::ForegroundRole)
             return TorrentFileListModel::data(index, role);
 
-        if (!tc || !index.isValid() || index.row() < 0 || index.row() >= rowCount(QModelIndex()))
+        if (!tc || !index.isValid() || index.row() >= rowCount(QModelIndex()))
             return QVariant();
 
         if (role == Qt::ForegroundRole && index.column() == 2 && tc->getStats().multi_file_torrent)
@@ -301,4 +300,3 @@ namespace kt
     }
 }
 
-#include "iwfilelistmodel.moc"

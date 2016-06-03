@@ -79,14 +79,11 @@ void MagnetTest::start()
     }
 
     // Make sure network interface is set properly before server is initialized
-    if (Settings::networkInterface() != 0)
+    if (!Settings::networkInterface().isEmpty())
     {
-        QList<QNetworkInterface> iface_list = QNetworkInterface::allInterfaces();
-        int iface = Settings::networkInterface();
-        if (iface > iface_list.count())
-            SetNetworkInterface(QString::null);
-        else
-            SetNetworkInterface(iface_list[iface - 1].name());
+        //QList<QNetworkInterface> iface_list = QNetworkInterface::allInterfaces();
+        QString iface = Settings::networkInterface();
+        SetNetworkInterface(iface);
     }
 
 
@@ -137,7 +134,7 @@ void MagnetTest::foundMetaData(MagnetDownloader* md, const QByteArray& data)
     {
         BEncoder enc(&fptr);
         enc.beginDict();
-        KUrl::List trs = mlink.trackers();
+        Qlist<QUrl> trs = mlink.trackers();
         if (trs.count())
         {
             enc.write("announce");
@@ -146,9 +143,9 @@ void MagnetTest::foundMetaData(MagnetDownloader* md, const QByteArray& data)
             {
                 enc.write("announce-list");
                 enc.beginList();
-                foreach (const KUrl& u, trs)
+                foreach (const QUrl& u, trs)
                 {
-                    enc.write(u.prettyUrl());
+                    enc.write(u.toDisplayString());
                 }
                 enc.end();
             }

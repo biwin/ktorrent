@@ -19,9 +19,9 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  ***************************************************************************/
 #include "peerviewmodel.h"
-#include <klocale.h>
-#include <kicon.h>
-#include <kstandarddirs.h>
+#include <QIcon>
+#include <QLocale>
+#include <klocalizedstring.h>
 #include <interfaces/torrentinterface.h>
 #include <util/functions.h>
 #include "flagdb.h"
@@ -31,7 +31,7 @@ using namespace bt;
 
 namespace kt
 {
-    static KIcon yes, no;
+    static QIcon yes, no;
     static bool icons_loaded = false;
     static FlagDB flagDB(22, 18);
 
@@ -41,10 +41,10 @@ namespace kt
         stats = peer->getStats();
         if (!icons_loaded)
         {
-            yes = KIcon("dialog-ok");
-            no = KIcon("dialog-cancel");
+            yes = QIcon::fromTheme(QStringLiteral("dialog-ok"));
+            no = QIcon::fromTheme(QStringLiteral("dialog-cancel"));
             icons_loaded = true;
-            flagDB.addFlagSource("locale", QString("l10n/%1/flag.png"));
+            flagDB.addFlagSource(QStringLiteral("/usr/share/locale/l10n/%1/flag.png")); //part of kde-runtime-data package
         }
 
         if (geo_ip)
@@ -53,7 +53,7 @@ namespace kt
             if (country_id > 0)
             {
                 country = geo_ip->countryName(country_id);
-                flag = KIcon(flagDB.getFlag(geo_ip->countryCode(country_id)));
+                flag = flagDB.getFlag(geo_ip->countryCode(country_id));
             }
         }
     }
@@ -102,11 +102,11 @@ namespace kt
                 return QVariant();
         case 5: return stats.choked ? i18nc("Choked", "Yes") : i18nc("Not choked", "No");
         case 6: return stats.snubbed ? i18nc("Snubbed", "Yes") : i18nc("Not snubbed", "No");
-        case 7: return QString("%1 %").arg(KGlobal::locale()->formatNumber(stats.perc_of_file, 2));
+        case 7: return QString(QString::number((int)stats.perc_of_file) + QLatin1String(" %"));
         case 8: return QVariant();
-        case 9: return KGlobal::locale()->formatNumber(stats.aca_score, 2);
+        case 9: return QLocale().toString(stats.aca_score, 'g', 2);
         case 10: return QVariant();
-        case 11: return QString("%1 / %2").arg(stats.num_down_requests).arg(stats.num_up_requests);
+        case 11: return QString(QString::number(stats.num_down_requests) + QLatin1String(" / ") + QString::number(stats.num_up_requests));
         case 12: return BytesToString(stats.bytes_downloaded);
         case 13: return BytesToString(stats.bytes_uploaded);
         case 14: return stats.interested ? i18nc("Interested", "Yes") : i18nc("Not Interested", "No");
@@ -147,11 +147,11 @@ namespace kt
         {
         case 0:
             if (stats.encrypted)
-                return KIcon("kt-encrypted");
+                return QIcon::fromTheme(QStringLiteral("kt-encrypted"));
             break;
         case 1: return flag;
         case 8: return stats.dht_support ? yes : no;
-        case 10: return stats.has_upload_slot ? yes : KIcon();
+        case 10: return stats.has_upload_slot ? yes : QIcon();
         }
 
         return QVariant();
@@ -299,7 +299,7 @@ namespace kt
 
     QVariant PeerViewModel::data(const QModelIndex& index, int role) const
     {
-        if (!index.isValid() || index.row() >= items.count() || index.row() < 0)
+        if (!index.isValid() || index.row() >= items.count())
             return QVariant();
 
         Item* item = items[index.row()];
@@ -332,7 +332,7 @@ namespace kt
 
     bt::PeerInterface* PeerViewModel::indexToPeer(const QModelIndex& index)
     {
-        if (!index.isValid() || index.row() >= items.count() || index.row() < 0)
+        if (!index.isValid() || index.row() >= items.count())
             return 0;
         else
             return ((Item*)index.internalPointer())->peer;

@@ -18,8 +18,8 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  ***************************************************************************/
-#include <kicon.h>
-#include <klocale.h>
+#include <QIcon>
+#include <klocalizedstring.h>
 #include <kmimetype.h>
 #include <ktar.h>
 #include <kzip.h>

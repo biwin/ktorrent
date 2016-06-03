@@ -20,9 +20,10 @@
  ***************************************************************************/
 #include <QDateTime>
 #include <QDomElement>
-#include <KIcon>
+#include <QIcon>
 #include <KGlobal>
 #include <KLocale>
+#include <klocalizedstring.h>
 #include <syndication/item.h>
 #include <syndication/enclosure.h>
 #include <util/log.h>
@@ -114,7 +115,7 @@ namespace kt
             }
         }
         else if (role == Qt::DecorationRole && index.column() == 0 && feed->downloaded(item))
-            return KIcon("go-down");
+            return QIcon::fromTheme("go-down");
 
         return QVariant();
     }

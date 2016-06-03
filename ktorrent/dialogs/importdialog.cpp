@@ -17,8 +17,8 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.             *
  ***************************************************************************/
-#include <kurl.h>
-#include <klocale.h>
+#include <QUrl>
+#include <klocalizedstring.h>
 #include <kmessagebox.h>
 #include <kio/job.h>
 #include <kio/jobuidelegate.h>
@@ -38,6 +38,8 @@
 #include <datachecker/multidatachecker.h>
 #include <interfaces/functions.h>
 #include <settings.h>
+#include <KGuiItem>
+#include <KStandardGuiItem>
 #include "importdialog.h"
 
 
@@ -49,6 +51,7 @@ namespace kt
     ImportDialog::ImportDialog(CoreInterface* core, QWidget* parent)
         : QDialog(parent), core(core), dc(0), dc_thread(0), canceled(false)
     {
+        setAttribute(Qt::WA_DeleteOnClose);
         setupUi(this);
         KUrlRequester* r = m_torrent_url;
         r->setMode(KFile::File | KFile::LocalOnly);
@@ -61,8 +64,8 @@ namespace kt
         connect(m_cancel_btn, SIGNAL(clicked()), this, SLOT(cancelImport()));
         m_progress->setEnabled(false);
         m_progress->setValue(0);
-        m_cancel_btn->setGuiItem(KStandardGuiItem::cancel());
-        m_import_btn->setIcon(KIcon("document-import"));
+        KGuiItem::assign(m_cancel_btn, KStandardGuiItem::cancel());
+        m_import_btn->setIcon(QIcon::fromTheme(QStringLiteral("document-import")));
     }
 
     ImportDialog::~ImportDialog()
@@ -76,8 +79,8 @@ namespace kt
 
     void ImportDialog::finished()
     {
-        KUrl data_url = m_data_url->url();
-        KUrl tor_url = m_torrent_url->url();
+        QString data_dir = m_data_url->url().toLocalFile();
+        QUrl tor_url = m_torrent_url->url();
         if (canceled || !dc_thread->getError().isEmpty())
         {
             if (!canceled)
@@ -99,10 +102,10 @@ namespace kt
                 bt::MakeDir(tor_dir);
 
             // write the index file
-            writeIndex(tor_dir + "index", dc->getResult());
+            writeIndex(tor_dir + QLatin1String("index"), dc->getResult());
 
             // copy the torrent file
-            bt::CopyFile(tor_url.url(), tor_dir + "torrent");
+            bt::CopyFile(tor_url.url(), tor_dir + QLatin1String("torrent"));
 
             Uint64 imported = calcImportedBytes(dc->getResult(), tor);
 
@@ -112,46 +115,45 @@ namespace kt
                 QList<Uint32> dnd_files;
 
                 // first make tor_dir/dnd
-                QString dnd_dir = tor_dir + "dnd" + bt::DirSeparator();
+                QString dnd_dir = tor_dir + QLatin1String("dnd") + bt::DirSeparator();
                 if (!bt::Exists(dnd_dir))
                     MakeDir(dnd_dir);
 
-                QString ddir = data_url.toLocalFile();
-                if (!ddir.endsWith(bt::DirSeparator()))
-                    ddir += bt::DirSeparator();
+                if (!data_dir.endsWith(bt::DirSeparator()))
+                    data_dir += bt::DirSeparator();
 
                 for (Uint32 i = 0; i < tor.getNumFiles(); i++)
                 {
                     TorrentFile& tf = tor.getFile(i);
-                    makeDirs(dnd_dir, data_url, tf.getPath());
-                    tf.setPathOnDisk(ddir + tf.getPath());
+                    makeDirs(dnd_dir, data_dir, tf.getPath());
+                    tf.setPathOnDisk(data_dir + tf.getPath());
                 }
 
                 saveFileMap(tor, tor_dir);
 
-                QString durl = data_url.toLocalFile();
-                if (durl.endsWith(bt::DirSeparator()))
-                    durl = durl.left(durl.length() - 1);
+                QString durl = data_dir;
+                //if (durl.endsWith(bt::DirSeparator()))
+                durl.chop(1);
                 int ds = durl.lastIndexOf(bt::DirSeparator());
-                if (durl.mid(ds + 1) == tor.getNameSuggestion())
+                if (durl.midRef(ds + 1) == tor.getNameSuggestion())
                 {
-                    durl = durl.left(ds);
-                    saveStats(tor_dir + "stats", KUrl(durl), imported, false);
+                    durl.truncate(ds);
+                    saveStats(tor_dir + QLatin1String("stats"), durl, imported, false);
                 }
                 else
                 {
-                    saveStats(tor_dir + "stats", KUrl(durl), imported, true);
+                    saveStats(tor_dir + QLatin1String("stats"), durl, imported, true);
                 }
-                saveFileInfo(tor_dir + "file_info", dnd_files);
+                saveFileInfo(tor_dir + QLatin1String("file_info"), dnd_files);
             }
             else
             {
                 // single file, just symlink the data_url to tor_dir/cache
-                QString durl = data_url.toLocalFile();
+                QString durl = data_dir;
                 int ds = durl.lastIndexOf(bt::DirSeparator());
-                durl = durl.left(ds);
-                saveStats(tor_dir + "stats", durl, imported, false);
-                saveFileMap(tor_dir, data_url.toLocalFile());
+                durl.truncate(ds);
+                saveStats(tor_dir + QLatin1String("stats"), durl, imported, false);
+                saveFileMap(tor_dir, data_dir);
             }
 
             // everything went OK, so load the whole shabang and start downloading
@@ -176,8 +178,8 @@ namespace kt
     void ImportDialog::import()
     {
         // get the urls
-        KUrl tor_url = m_torrent_url->url();
-        KUrl data_url = m_data_url->url();
+        QUrl tor_url = m_torrent_url->url();
+        QUrl data_url = m_data_url->url();
 
         // now we need to check the data
         if (tor.isMultiFile())
@@ -238,7 +240,7 @@ namespace kt
         m_torrent_url->setEnabled(false);
         m_data_url->setEnabled(false);
 
-        KUrl tor_url = m_torrent_url->url();
+        QUrl tor_url = m_torrent_url->url();
         if (!tor_url.isLocalFile())
         {
             // download the torrent file
@@ -298,14 +300,14 @@ namespace kt
         }
     }
 
-    void ImportDialog::makeDirs(const QString& dnd_dir, const KUrl& data_url, const QString& fpath)
+    void ImportDialog::makeDirs(const QString& dnd_dir, const QString &data_url, const QString& fpath)
     {
         QStringList sl = fpath.split(bt::DirSeparator());
 
         // create all necessary subdirs
-        QString otmp = data_url.toLocalFile();
-        if (!otmp.endsWith(bt::DirSeparator()))
-            otmp += bt::DirSeparator();
+        QString otmp = data_url;
+        //if (!otmp.endsWith(bt::DirSeparator()))
+        //    otmp += bt::DirSeparator();
 
         QString dtmp = dnd_dir;
         for (int i = 0; i < sl.count() - 1; i++)
@@ -321,7 +323,7 @@ namespace kt
         }
     }
 
-    void ImportDialog::saveStats(const QString& stats_file, const KUrl& data_url, Uint64 imported, bool custom_output_name)
+    void ImportDialog::saveStats(const QString& stats_file, const QString &data_dir, Uint64 imported, bool custom_output_name)
     {
         QFile fptr(stats_file);
         if (!fptr.open(QIODevice::WriteOnly))
@@ -331,7 +333,7 @@ namespace kt
         }
 
         QTextStream out(&fptr);
-        out << "OUTPUTDIR=" << data_url.toLocalFile() << ::endl;
+        out << "OUTPUTDIR=" << data_dir << ::endl;
         out << "UPLOADED=0" << ::endl;
         out << "RUNNING_TIME_DL=0" << ::endl;
         out << "RUNNING_TIME_UL=0" << ::endl;
@@ -388,7 +390,7 @@ namespace kt
 
     void ImportDialog::saveFileMap(const Torrent& tor, const QString& tor_dir)
     {
-        QString file_map = tor_dir + "file_map";
+        QString file_map = tor_dir + QLatin1String("file_map");
         QFile fptr(file_map);
         if (!fptr.open(QIODevice::WriteOnly))
             throw Error(i18n("Failed to create %1: %2", file_map, fptr.errorString()));
@@ -405,7 +407,7 @@ namespace kt
 
     void ImportDialog::saveFileMap(const QString& tor_dir, const QString& ddir)
     {
-        QString file_map = tor_dir + "file_map";
+        QString file_map = tor_dir + QLatin1String("file_map");
         QFile fptr(file_map);
         if (!fptr.open(QIODevice::WriteOnly))
             throw Error(i18n("Failed to create %1: %2", file_map, fptr.errorString()));
@@ -416,7 +418,4 @@ namespace kt
 
 }
 
-
-
-#include "importdialog.moc"
 

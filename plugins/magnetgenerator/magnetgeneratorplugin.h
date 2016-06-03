@@ -33,7 +33,7 @@ namespace kt
     {
         Q_OBJECT
     public:
-        MagnetGeneratorPlugin(QObject* parent, const QStringList& args);
+        MagnetGeneratorPlugin(QObject* parent, const QVariantList& args);
         virtual ~MagnetGeneratorPlugin();
 
         virtual void load();
@@ -47,7 +47,7 @@ namespace kt
 
     private:
         MagnetGeneratorPrefWidget* pref;
-        KAction* generate_magnet_action;
+        QAction * generate_magnet_action;
         void addToClipboard(QString uri);
         void showPopup();
     };

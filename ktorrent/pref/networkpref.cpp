@@ -18,10 +18,9 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  ***************************************************************************/
-#include <klocale.h>
+#include <klocalizedstring.h>
 #include <QNetworkInterface>
 #include <solid/device.h>
-#include <solid/networkinterface.h>
 #include <util/log.h>
 #include "networkpref.h"
 #include "settings.h"
@@ -45,6 +44,7 @@ namespace kt
     {
     }
 
+
     void NetworkPref::loadSettings()
     {
         kcfg_maxDownloadRate->setValue(Settings::maxDownloadRate());
@@ -52,8 +52,8 @@ namespace kt
         kcfg_maxConnections->setValue(Settings::maxConnections());
         kcfg_maxTotalConnections->setValue(Settings::maxTotalConnections());
 
-        kcfg_networkInterface->clear();
-        kcfg_networkInterface->addItem(KIcon("network-wired"), i18n("All interfaces"));
+        combo_networkInterface->clear();
+        combo_networkInterface->addItem(QIcon::fromTheme("network-wired"), i18n("All interfaces"));
 
         kcfg_onlyUseUtp->setEnabled(Settings::utpEnabled());
         kcfg_primaryTransportProtocol->setEnabled(Settings::utpEnabled() && !Settings::onlyUseUtp());
@@ -61,27 +61,50 @@ namespace kt
         // get all the network devices and add them to the combo box
         QList<QNetworkInterface> iface_list = QNetworkInterface::allInterfaces();
 
-        QList<Solid::Device> netlist = Solid::Device::listFromType(Solid::DeviceInterface::NetworkInterface);
+        // KF5 QList<Solid::Device> netlist = Solid::Device::listFromType(Solid::DeviceInterface::NetworkInterface);
 
 
         foreach (const QNetworkInterface& iface, iface_list)
         {
-            KIcon icon("network-wired");
+            QIcon icon = QIcon::fromTheme("network-wired");
+#if 0 //KF5
             foreach (const Solid::Device& device, netlist)
             {
                 const Solid::NetworkInterface* netdev = device.as<Solid::NetworkInterface>();
                 if (netdev->ifaceName() == iface.name() && netdev->isWireless())
                 {
-                    icon = KIcon("network-wireless");
+                    icon = QIcon::fromTheme("network-wireless");
                     break;
                 }
 
             }
+#endif
 
-            kcfg_networkInterface->addItem(icon, iface.name());
+            combo_networkInterface->addItem(icon, iface.name());
         }
+        QString iface = Settings::networkInterface();
+        int idx = (iface.isEmpty())? 0 /*all*/: combo_networkInterface->findText(iface);
+        if (idx < 0)
+        {
+            bool ok;
+            iface.toInt(&ok);
+            if (ok)
+            {
+                idx = 0;
+            }
+            else
+            {
+                combo_networkInterface->addItem(iface);
+                idx = combo_networkInterface->findText(iface);
+            }
+        }
+        combo_networkInterface->setCurrentIndex(idx);
+    }
 
-        kcfg_networkInterface->setCurrentIndex(Settings::networkInterface());
+    void NetworkPref::updateSettings()
+    {
+        QString iface = combo_networkInterface->currentText();
+        Settings::setNetworkInterface(iface);
     }
 
     void NetworkPref::loadDefaults()

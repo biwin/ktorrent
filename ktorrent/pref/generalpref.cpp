@@ -39,28 +39,33 @@ namespace kt
 
     void GeneralPref::loadSettings()
     {
-        if (Settings::tempDir().toLocalFile().length() == 0)
-            kcfg_tempDir->setUrl(kt::DataDir());
+        kcfg_tempDir->setProperty("kcfg_property", "text");
+        kcfg_saveDir->setProperty("kcfg_property", "text");
+        kcfg_torrentCopyDir->setProperty("kcfg_property", "text");
+        kcfg_completedDir->setProperty("kcfg_property", "text");
+
+        if (Settings::tempDir().isEmpty())
+            kcfg_tempDir->setText(kt::DataDir());
         else
-            kcfg_tempDir->setUrl(Settings::tempDir());
+            kcfg_tempDir->setText(Settings::tempDir());
 
         kcfg_saveDir->setEnabled(Settings::useSaveDir());
-        if (Settings::saveDir().toLocalFile().length() == 0)
-            kcfg_saveDir->setUrl(QDir::homePath());
+        if (Settings::saveDir().isEmpty())
+            kcfg_saveDir->setText(QDir::homePath());
         else
-            kcfg_saveDir->setUrl(Settings::saveDir());
+            kcfg_saveDir->setText(Settings::saveDir());
 
         kcfg_torrentCopyDir->setEnabled(Settings::useTorrentCopyDir());
-        if (Settings::torrentCopyDir().toLocalFile().length() == 0)
-            kcfg_torrentCopyDir->setUrl(QDir::homePath());
+        if (Settings::torrentCopyDir().isEmpty())
+            kcfg_torrentCopyDir->setText(QDir::homePath());
         else
-            kcfg_torrentCopyDir->setUrl(Settings::torrentCopyDir());
+            kcfg_torrentCopyDir->setText(Settings::torrentCopyDir());
 
         kcfg_completedDir->setEnabled(Settings::useCompletedDir());
-        if (Settings::completedDir().toLocalFile().length() == 0)
-            kcfg_completedDir->setUrl(QDir::homePath());
+        if (Settings::completedDir().isEmpty())
+            kcfg_completedDir->setText(QDir::homePath());
         else
-            kcfg_completedDir->setUrl(Settings::completedDir());
+            kcfg_completedDir->setText(Settings::completedDir());
 
 //          kcfg_downloadBandwidth->setEnabled(Settings::showSpeedBarInTrayIcon());
 //          kcfg_uploadBandwidth->setEnabled(Settings::showSpeedBarInTrayIcon());

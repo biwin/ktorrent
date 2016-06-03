@@ -27,7 +27,7 @@
 class QItemSelection;
 class QToolBar;
 class QTreeView;
-class KMenu;
+class QMenu;
 
 namespace kt
 {
@@ -59,8 +59,7 @@ namespace kt
         MagnetManager* mman;
         MagnetModel* model;
         QTreeView* view;
-        QToolBar* toolbar;
-        KMenu* menu;
+        QMenu* menu;
 
         QAction* start;
         QAction* stop;

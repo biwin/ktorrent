@@ -20,7 +20,7 @@
 
 #include "magnetmodel.h"
 #include <KLocalizedString>
-#include <KIcon>
+#include <QIcon>
 #include <QFile>
 #include <QTextStream>
 
@@ -45,7 +45,6 @@ namespace kt
 
     MagnetModel::~MagnetModel()
     {
-        delete mman;
     }
 
     void MagnetModel::removeMagnets(int row, int count)
@@ -99,7 +98,7 @@ namespace kt
         else if (role == Qt::DecorationRole)
         {
             if (index.column() == 0)
-                return KIcon("kt-magnet");
+                return QIcon::fromTheme(QStringLiteral("kt-magnet"));
         }
         else if (role == Qt::ToolTipRole)
         {
@@ -139,7 +138,7 @@ namespace kt
 
     int MagnetModel::rowCount(const QModelIndex& parent) const
     {
-        if (parent.isValid())
+        if (parent.isValid() || !mman)
             return 0;
         else
             return mman->count();

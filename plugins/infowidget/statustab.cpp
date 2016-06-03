@@ -20,9 +20,8 @@
 #include <math.h>
 #include <QDateTime>
 #include <QCheckBox>
-#include <KGlobal>
-#include <KLocale>
-#include <KRun>
+#include <klocalizedstring.h>
+#include <krun.h>
 #include <util/functions.h>
 #include <util/log.h>
 #include <util/sha1hash.h>
@@ -96,7 +95,7 @@ namespace kt
         if (tc == curr_tc.data())
             return;
 
-        curr_tc = bt::TorrentInterface::WPtr(tc);
+        curr_tc = tc;
 
         downloaded_bar->setTC(tc);
         availability_bar->setTC(tc);
@@ -185,7 +184,8 @@ namespace kt
         if (!time_limit->hasFocus())
             maxSeedTimeUpdate();
 
-        share_ratio->setText(QString("<font color=\"%1\">%2</font>").arg(ratio <= Settings::greenRatio() ? "#ff0000" : "#1c9a1c").arg(KGlobal::locale()->formatNumber(ratio, 2)));
+        static QLocale locale;
+        share_ratio->setText(QString("<font color=\"%1\">%2</font>").arg(ratio <= Settings::greenRatio() ? "#ff0000" : "#1c9a1c").arg(locale.toString(ratio, 'g', 2)));
 
         Uint32 secs = tc->getRunningTimeUL();
         if (secs == 0)
@@ -340,11 +340,8 @@ namespace kt
 
     void StatusTab::linkActivated(const QString& link)
     {
-        new KRun(KUrl(link), QApplication::activeWindow());
+        new KRun(QUrl(link), QApplication::activeWindow());
     }
 
 
 }
-
-#include "statustab.moc"
-

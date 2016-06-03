@@ -18,20 +18,21 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  ***************************************************************************/
+#include "statusbar.h"
+
 #include <QLabel>
 #include <QProgressBar>
-#include <klocale.h>
+#include <klocalizedstring.h>
 #include <util/functions.h>
 #include <dht/dhtbase.h>
 #include <kstatusbarofflineindicator.h>
-#include "statusbar.h"
 
 using namespace bt;
 
 namespace kt
 {
     StatusBar::StatusBar(QWidget* parent)
-        : KStatusBar(parent),
+        : QStatusBar(parent),
           speed(0), up_speed(0), down_speed(0),
           transfer(0), up_transfer(0), down_transfer(0),
           dht_status(0), dht_peers(0), dht_tasks(0), dht_on(false)
@@ -116,4 +117,3 @@ namespace kt
         showMessage(msg, 30 * 1000);
     }
 }
-#include "statusbar.moc"

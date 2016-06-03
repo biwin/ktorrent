@@ -17,16 +17,16 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.             *
  ***************************************************************************/
-#include <QBoxLayout>
-#include <kglobal.h>
-#include <kconfig.h>
-#include <klocale.h>
-#include <qapplication.h>
 #include "logviewer.h"
+
+#include <QBoxLayout>
+#include <kconfig.h>
+#include <klocalizedstring.h>
+#include <qapplication.h>
 #include "logflags.h"
 #include "logviewerpluginsettings.h"
 #include <QMenu>
-#include <KIcon>
+#include <QIcon>
 
 
 namespace kt
@@ -44,7 +44,7 @@ namespace kt
         output->setContextMenuPolicy(Qt::CustomContextMenu);
         connect(output, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(showMenu(QPoint)));
 
-        suspend_action = new QAction(KIcon("media-playback-pause"), i18n("Suspend Output"), this);
+        suspend_action = new QAction(QIcon::fromTheme("media-playback-pause"), i18n("Suspend Output"), this);
         suspend_action->setCheckable(true);
         connect(suspend_action, SIGNAL(toggled(bool)), this, SLOT(suspend(bool)));
     }
@@ -143,4 +143,3 @@ namespace kt
 
 
 }
-#include "logviewer.moc"

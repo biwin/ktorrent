@@ -18,7 +18,7 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  ***************************************************************************/
-#include <klocale.h>
+#include <klocalizedstring.h>
 #include "advancedpref.h"
 #include "settings.h"
 
@@ -54,7 +54,5 @@ namespace kt
         kcfg_fullDiskPrealloc->setEnabled(on);
     }
 }
-
-#include "advancedpref.moc"
 
 // kate: indent-mode cstyle; indent-width 4; replace-tabs on; mixed-indent off;

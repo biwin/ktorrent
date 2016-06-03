@@ -28,7 +28,7 @@ namespace kt
 {
     struct Range
     {
-        int first, last;
+        Uint32 first, last;
         int fac;
     };
 
@@ -56,7 +56,7 @@ namespace kt
         p->setPen(QPen(c, 1, Qt::SolidLine));
         p->setBrush(c);
 
-        QList<Range> rs;
+        QVector<Range> rs;
 
         for (Uint32 i = 0; i < bs.getNumBits(); i++)
         {
@@ -71,7 +71,7 @@ namespace kt
             else
             {
                 Range& l = rs.last();
-                if (l.last == int(i - 1))
+                if (l.last == i - 1)
                 {
                     l.last = i;
                 }
@@ -85,9 +85,9 @@ namespace kt
 
         QRect r = contents_rect;
 
-        for (QList<Range>::iterator i = rs.begin(); i != rs.end(); ++i)
+        for (auto i = rs.constBegin(); i != rs.constEnd(); ++i)
         {
-            Range& ra = *i;
+            const Range& ra = *i;
             int rw = ra.last - ra.first + 1;
             p->drawRect((int)(scale * ra.first), 0, (int)(rw * scale), r.height());
         }
@@ -95,9 +95,9 @@ namespace kt
 
     void ChunkBarRenderer::drawMoreChunksThenPixels(QPainter* p, const BitSet& bs, const QColor& color, const QRect& contents_rect)
     {
-        Uint32 w = contents_rect.width();
+        int w = contents_rect.width();
         double chunks_per_pixel = (double)bs.getNumBits() / w;
-        QList<Range> rs;
+        QVector<Range> rs;
 
         for (Uint32 i = 0; i < w; i++)
         {
@@ -120,7 +120,7 @@ namespace kt
             else
             {
                 Range& l = rs.last();
-                if (l.last == int(i - 1) && l.fac == fac)
+                if (l.last == i - 1 && l.fac == fac)
                 {
                     l.last = i;
                 }
@@ -134,9 +134,9 @@ namespace kt
 
         QRect r = contents_rect;
 
-        for (QList<Range>::iterator i = rs.begin(); i != rs.end(); ++i)
+        for (auto i = rs.constBegin(); i != rs.constEnd(); ++i)
         {
-            Range& ra = *i;
+            const Range& ra = *i;
             int rw = ra.last - ra.first + 1;
             int fac = ra.fac;
             QColor c = color;

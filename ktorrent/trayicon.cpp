@@ -18,26 +18,26 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  ***************************************************************************/
+
+#include "trayicon.h"
+
 #include <QPainter>
 #include <QtAlgorithms>
-#include <KIcon>
-#include <klocale.h>
-#include <kapplication.h>
-#include <qtooltip.h>
+#include <QIcon>
+#include <QLocale>
+#include <QToolTip>
 #include <kpassivepopup.h>
+#include <klocalizedstring.h>
 #include <knotification.h>
-#include <interfaces/torrentinterface.h>
+#include <kactioncollection.h>
 #include <util/functions.h>
 #include <net/socketmonitor.h>
 #include <util/log.h>
 #include <settings.h>
-#include <interfaces/torrentinterface.h>
 #include <interfaces/torrentactivityinterface.h>
 #include <torrent/queuemanager.h>
 #include "core.h"
-#include "trayicon.h"
 #include "gui.h"
-#include <kactioncollection.h>
 
 
 using namespace bt;
@@ -46,39 +46,28 @@ namespace kt
 {
 
 
-    TrayIcon::TrayIcon(Core* core, GUI* parent) : QObject(parent), core(core), mwnd(parent)
+    TrayIcon::TrayIcon(Core* core, GUI* parent) : QObject(parent)
+        , core(core)
+        , mwnd(parent)
+        , previousDownloadHeight(0)
+        , previousUploadHeight(0)
+        , max_upload_rate(0)
+        , max_download_rate(0)
+        , status_notifier_item(0)
+        , queue_suspended(false)
+        , menu(0)
     {
-        status_notifier_item = 0;
-        max_upload_rate = 0;
-        max_download_rate = 0;
-        previousDownloadHeight = 0;
-        previousUploadHeight = 0;
-        queue_suspended = false;
-        menu = 0;
-
-
-        connect(core, SIGNAL(openedSilently(bt::TorrentInterface*)),
-                this, SLOT(torrentSilentlyOpened(bt::TorrentInterface*)));
-        connect(core, SIGNAL(finished(bt::TorrentInterface*)),
-                this, SLOT(finished(bt::TorrentInterface*)));
-        connect(core, SIGNAL(torrentStoppedByError(bt::TorrentInterface*, QString)),
-                this, SLOT(torrentStoppedByError(bt::TorrentInterface*, QString)));
-        connect(core, SIGNAL(maxShareRatioReached(bt::TorrentInterface*)),
-                this, SLOT(maxShareRatioReached(bt::TorrentInterface*)));
-        connect(core, SIGNAL(maxSeedTimeReached(bt::TorrentInterface*)),
-                this, SLOT(maxSeedTimeReached(bt::TorrentInterface*)));
-        connect(core, SIGNAL(corruptedData(bt::TorrentInterface*)),
-                this, SLOT(corruptedData(bt::TorrentInterface*)));
-        connect(core, SIGNAL(queuingNotPossible(bt::TorrentInterface*)),
-                this, SLOT(queuingNotPossible(bt::TorrentInterface*)));
-        connect(core, SIGNAL(canNotStart(bt::TorrentInterface*, bt::TorrentStartResponse)),
-                this, SLOT(canNotStart(bt::TorrentInterface*, bt::TorrentStartResponse)));
-        connect(core, SIGNAL(lowDiskSpace(bt::TorrentInterface*, bool)),
-                this, SLOT(lowDiskSpace(bt::TorrentInterface*, bool)));
-        connect(core, SIGNAL(canNotLoadSilently(const QString&)),
-                this, SLOT(cannotLoadTorrentSilently(const QString&)));
-        connect(core, SIGNAL(dhtNotEnabled(QString)),
-                this, SLOT(dhtNotEnabled(QString)));
+        connect(core, &Core::openedSilently, this, &TrayIcon::torrentSilentlyOpened);
+        connect(core, &Core::finished, this, &TrayIcon::finished);
+        connect(core, &Core::torrentStoppedByError, this, &TrayIcon::torrentStoppedByError);
+        connect(core, &Core::maxShareRatioReached, this, &TrayIcon::maxShareRatioReached);
+        connect(core, &Core::maxSeedTimeReached, this, &TrayIcon::maxSeedTimeReached);
+        connect(core, &Core::corruptedData, this, &TrayIcon::corruptedData);
+        connect(core, &Core::queuingNotPossible, this, &TrayIcon::queuingNotPossible);
+        connect(core, &Core::canNotStart, this, &TrayIcon::canNotStart);
+        connect(core, &Core::lowDiskSpace, this, &TrayIcon::lowDiskSpace);
+        connect(core, &Core::canNotLoadSilently, this, &TrayIcon::cannotLoadTorrentSilently);
+        connect(core, &Core::dhtNotEnabled, this, &TrayIcon::dhtNotEnabled);
         connect(core->getQueueManager(), SIGNAL(suspendStateChanged(bool)),
                 this, SLOT(suspendStateChanged(bool)));
 
@@ -108,7 +97,7 @@ namespace kt
         }
 
         status_notifier_item = new KStatusNotifierItem(mwnd);
-        connect(status_notifier_item, SIGNAL(secondaryActivateRequested(QPoint)), this, SLOT(secondaryActivate(QPoint)));
+        connect(status_notifier_item, &KStatusNotifierItem::secondaryActivateRequested, this, &TrayIcon::secondaryActivate);
 
         menu = status_notifier_item->contextMenu();
 
@@ -121,20 +110,20 @@ namespace kt
         menu->addSeparator();
 
         KActionCollection* ac = mwnd->getTorrentActivity()->part()->actionCollection();
-        menu->addAction(ac->action("start_all"));
-        menu->addAction(ac->action("stop_all"));
-        menu->addAction(ac->action("queue_suspend"));
+        menu->addAction(ac->action(QStringLiteral("start_all")));
+        menu->addAction(ac->action(QStringLiteral("stop_all")));
+        menu->addAction(ac->action(QStringLiteral("queue_suspend")));
         menu->addSeparator();
 
         ac = mwnd->actionCollection();
-        menu->addAction(ac->action("paste_url"));
+        menu->addAction(ac->action(QStringLiteral("paste_url")));
         menu->addAction(ac->action(KStandardAction::name(KStandardAction::Open)));
         menu->addSeparator();
         menu->addAction(ac->action(KStandardAction::name(KStandardAction::Preferences)));
         menu->addSeparator();
 
 
-        status_notifier_item->setIconByName("ktorrent");
+        status_notifier_item->setIconByName(QStringLiteral("ktorrent"));
         status_notifier_item->setCategory(KStatusNotifierItem::ApplicationStatus);
         status_notifier_item->setStatus(KStatusNotifierItem::Passive);
         status_notifier_item->setStandardActionsEnabled(true);
@@ -142,7 +131,7 @@ namespace kt
 
         queue_suspended = core->getQueueManager()->getSuspendedState();
         if (queue_suspended)
-            status_notifier_item->setOverlayIconByName("kt-pause");
+            status_notifier_item->setOverlayIconByName(QStringLiteral("kt-pause"));
     }
 
 
@@ -153,24 +142,22 @@ namespace kt
 
         status_notifier_item->setStatus(core->getQueueManager()->getNumRunning(QueueManager::DOWNLOADS) > 0 ?
                                         KStatusNotifierItem::Active : KStatusNotifierItem::Passive);
-        QString tip = i18n("<table>"
-                           "<tr><td>Download&nbsp;speed:</td><td><b>%1</b></td></tr>"
-                           "<tr><td>Upload&nbsp;speed:</td><td><b>%2</b></td></tr>"
-                           "<tr><td>Received:</td><td><b>%3</b></td></tr>"
-                           "<tr><td>Transmitted:</td><td><b>%4</b></td></tr>"
-                           "</table>",
+        QString tip = i18n("Download speed: <b>%1</b><br/>"
+                           "Upload speed: <b>%2</b><br/>"
+                           "Received: <b>%3</b><br/>"
+                           "Transmitted: <b>%4</b>",
                            BytesPerSecToString((double)stats.download_speed),
                            BytesPerSecToString((double)stats.upload_speed),
                            BytesToString(stats.bytes_downloaded),
                            BytesToString(stats.bytes_uploaded));
 
-        status_notifier_item->setToolTip("ktorrent", i18n("Status"), tip);
+        status_notifier_item->setToolTip(QStringLiteral("ktorrent"), i18n("Status"), tip);
     }
 
     void TrayIcon::showPassivePopup(const QString& msg, const QString& title)
     {
         if (status_notifier_item)
-            status_notifier_item->showMessage(title, msg, "ktorrent");
+            status_notifier_item->showMessage(title, msg, QStringLiteral("ktorrent"));
     }
 
     void TrayIcon::cannotLoadTorrentSilently(const QString& msg)
@@ -223,13 +210,12 @@ namespace kt
             return;
 
         const TorrentStats& s = tc->getStats();
-        KLocale* loc = KGlobal::locale();
         double speed_up = (double)s.bytes_uploaded;
 
         QString msg = i18n("<b>%1</b> has reached its maximum share ratio of %2 and has been stopped."
                            "<br>Uploaded %3 at an average speed of %4.",
                            tc->getDisplayName(),
-                           loc->formatNumber(s.max_share_ratio, 2),
+                           QLocale().toString(s.max_share_ratio, 'g', 2),
                            BytesToString(s.bytes_uploaded),
                            BytesPerSecToString(speed_up / tc->getRunningTimeUL()));
 
@@ -242,13 +228,12 @@ namespace kt
             return;
 
         const TorrentStats& s = tc->getStats();
-        KLocale* loc = KGlobal::locale();
         double speed_up = (double)s.bytes_uploaded;
 
         QString msg = i18n("<b>%1</b> has reached its maximum seed time of %2 hours and has been stopped."
                            "<br>Uploaded %3 at an average speed of %4.",
                            tc->getDisplayName(),
-                           loc->formatNumber(s.max_seed_time, 2),
+                           QLocale().toString(s.max_seed_time, 'g', 2),
                            BytesToString(s.bytes_uploaded),
                            BytesPerSecToString(speed_up / tc->getRunningTimeUL()));
 
@@ -285,16 +270,15 @@ namespace kt
         const TorrentStats& s = tc->getStats();
 
         QString msg;
-        KLocale* loc = KGlobal::locale();
 
         if (tc->overMaxRatio())
             msg = i18n("<b>%1</b> has reached its maximum share ratio of %2 and cannot be enqueued. "
                        "<br>Remove the limit manually if you want to continue seeding.",
-                       tc->getDisplayName(), loc->formatNumber(s.max_share_ratio, 2));
+                       tc->getDisplayName(), QLocale().toString(s.max_share_ratio, 'g', 2));
         else
             msg = i18n("<b>%1</b> has reached its maximum seed time of %2 hours and cannot be enqueued. "
                        "<br>Remove the limit manually if you want to continue seeding.",
-                       tc->getDisplayName(), loc->formatNumber(s.max_seed_time, 2));
+                       tc->getDisplayName(), QLocale().toString(s.max_seed_time, 'g', 2));
 
         KNotification::event("QueueNotPossible", msg, QPixmap(), mwnd);
     }
@@ -355,14 +339,14 @@ namespace kt
 
 
 
-    SetMaxRate::SetMaxRate(Core* core, Type t, QWidget* parent) : KMenu(parent)
+    SetMaxRate::SetMaxRate(Core* core, Type t, QWidget* parent) : QMenu(parent)
     {
-        setIcon(t == UPLOAD ? KIcon("kt-set-max-upload-speed") : KIcon("kt-set-max-download-speed"));
+        setIcon(t == UPLOAD ? QIcon::fromTheme(QStringLiteral("kt-set-max-upload-speed")) : QIcon::fromTheme(QStringLiteral("kt-set-max-download-speed")));
         m_core = core;
         type = t;
         makeMenu();
-        connect(this, SIGNAL(triggered(QAction*)), this, SLOT(onTriggered(QAction*)));
-        connect(this, SIGNAL(aboutToShow()), this, SLOT(update()));
+        connect(this, &SetMaxRate::triggered, this, &SetMaxRate::onTriggered);
+        connect(this, &SetMaxRate::aboutToShow, this, &SetMaxRate::update);
     }
 
     SetMaxRate::~SetMaxRate()
@@ -375,7 +359,7 @@ namespace kt
         int delta = 0;
         int maxBandwidthRounded;
 
-        addTitle(i18n("Speed limit in KiB/s"));
+        setTitle(i18n("Speed limit in KiB/s"));
 
         unlimited = addAction(i18n("Unlimited"));
         unlimited->setCheckable(true);
@@ -413,7 +397,7 @@ namespace kt
         {
             if (v >= 1)
             {
-                QAction* act = addAction(QString("%1").arg(v));
+                QAction* act = addAction(QString::number(v));
                 act->setCheckable(true);
                 act->setChecked(rate == v);
             }
@@ -432,7 +416,7 @@ namespace kt
         if (act == unlimited)
             rate = 0;
         else
-            rate = act->text().remove("&").toInt(); // remove ampersands
+            rate = act->text().remove('&').toInt(); // remove ampersands
 
         if (type == UPLOAD)
         {
@@ -444,22 +428,14 @@ namespace kt
             Settings::setMaxDownloadRate(rate);
             net::SocketMonitor::setDownloadCap(Settings::maxDownloadRate() * 1024);
         }
-        Settings::self()->writeConfig();
+        Settings::self()->save();
     }
 
     void TrayIcon::suspendStateChanged(bool suspended)
     {
-        queue_suspended = queue_suspended;
-        if (!suspended)
-        {
-            if (status_notifier_item)
-                status_notifier_item->setOverlayIconByName(QString());
-        }
-        else
-        {
-            if (status_notifier_item)
-                status_notifier_item->setOverlayIconByName("kt-pause");
-        }
+        queue_suspended = suspended;
+        if (status_notifier_item)
+            status_notifier_item->setOverlayIconByName(suspended?QStringLiteral("kt-pause"):QString());
     }
 
     void TrayIcon::secondaryActivate(const QPoint& pos)
@@ -469,5 +445,3 @@ namespace kt
     }
 
 }
-
-#include "trayicon.moc"

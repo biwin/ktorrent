@@ -17,14 +17,15 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.             *
  ***************************************************************************/
+#include "fileselectdlg.h"
+
 #include <QMenu>
 #include <QTextCodec>
-#include <klocale.h>
+#include <klocalizedstring.h>
+#include <kio/global.h>
 #include <kmessagebox.h>
-#include <kiconloader.h>
-#include <kmimetype.h>
 #include <kstandardguiitem.h>
-#include <kpushbutton.h>
+#include <QPushButton>
 #include <interfaces/torrentfileinterface.h>
 #include <interfaces/torrentinterface.h>
 #include <util/functions.h>
@@ -38,7 +39,6 @@
 #include <torrent/queuemanager.h>
 #include <torrent/torrentfiletreemodel.h>
 #include <torrent/torrentfilelistmodel.h>
-#include "fileselectdlg.h"
 #include "settings.h"
 
 using namespace bt;
@@ -47,18 +47,24 @@ namespace kt
 {
 
     FileSelectDlg::FileSelectDlg(kt::QueueManager* qman, kt::GroupManager* gman, const QString& group_hint, QWidget* parent)
-        : KDialog(parent),
-          qman(qman),
-          gman(gman),
-          initial_group(0),
-          show_file_tree(true),
-          already_downloaded(0)
+        : QDialog(parent)
+        , tc(0)
+        , model(0)
+        , qman(qman)
+        , gman(gman)
+        , start(0)
+        , skip_check(0)
+        , initial_group(0)
+        , show_file_tree(true)
+        , already_downloaded(0)
     {
-        setupUi(mainWidget());
+        setupUi(this);
+        connect(buttonBox,SIGNAL(accepted()),this,SLOT(accept()));
+        connect(buttonBox,SIGNAL(rejected()),this,SLOT(reject()));
+
         m_file_view->setAlternatingRowColors(true);
         filter_model = new TreeFilterModel(this);
         m_file_view->setModel(filter_model);
-        model = 0;
         //root = 0;
         connect(m_select_all, SIGNAL(clicked()), this, SLOT(selectAll()));
         connect(m_select_none, SIGNAL(clicked()), this, SLOT(selectNone()));
@@ -69,11 +75,10 @@ namespace kt
         m_downloadLocation->setMode(KFile::Directory | KFile::ExistingOnly | KFile::LocalOnly);
         m_completedLocation->setMode(KFile::Directory | KFile::ExistingOnly | KFile::LocalOnly);
 
-        m_download_location_history->setIcon(KIcon("view-history"));
+        m_download_location_history->setIcon(QIcon::fromTheme(QStringLiteral("view-history")));
         m_download_location_history->setPopupMode(QToolButton::MenuButtonPopup);
-        m_move_when_completed_history->setIcon(KIcon("view-history"));
+        m_move_when_completed_history->setIcon(QIcon::fromTheme(QStringLiteral("view-history")));
         m_move_when_completed_history->setPopupMode(QToolButton::MenuButtonPopup);
-
 
         encodings = QTextCodec::availableMibs();
         foreach (int mib, encodings)
@@ -85,10 +90,10 @@ namespace kt
             initial_group = gman->find(group_hint);
 
         QButtonGroup* bg = new QButtonGroup(this);
-        m_tree->setIcon(KIcon("view-list-tree"));
+        m_tree->setIcon(QIcon::fromTheme(QStringLiteral("view-list-tree")));
         m_tree->setToolTip(i18n("Show a file tree"));
         connect(m_tree, SIGNAL(clicked(bool)), this, SLOT(fileTree(bool)));
-        m_list->setIcon(KIcon("view-list-text"));
+        m_list->setIcon(QIcon::fromTheme(QStringLiteral("view-list-text")));
         m_list->setToolTip(i18n("Show a file list"));
         connect(m_list, SIGNAL(clicked(bool)), this, SLOT(fileList(bool)));
         m_tree->setCheckable(true);
@@ -97,14 +102,11 @@ namespace kt
         bg->addButton(m_list);
         bg->setExclusive(true);
 
-        m_filter->setClearButtonShown(true);
-        m_filter->setClickMessage(i18n("Filter"));
+        m_filter->setClearButtonEnabled(true);
+        m_filter->setPlaceholderText(i18n("Filter"));
         connect(m_filter, SIGNAL(textChanged(QString)), this, SLOT(setFilter(QString)));
 
-        if (Settings::useCompletedDir())
-            m_moveCompleted->setCheckState(Qt::Checked);
-        else
-            m_moveCompleted->setCheckState(Qt::Unchecked);
+        m_moveCompleted->setCheckState(Settings::useCompletedDir()?Qt::Checked:Qt::Unchecked);
 
         m_completedLocation->setEnabled(Settings::useCompletedDir());
         connect(m_moveCompleted, SIGNAL(toggled(bool)), this, SLOT(moveCompletedToggled(bool)));
@@ -115,60 +117,57 @@ namespace kt
 
     int FileSelectDlg::execute(bt::TorrentInterface* tc, bool* start, bool* skip_check, const QString& location_hint)
     {
+        if (!tc)
+            return QDialog::Rejected;
+
         setWindowTitle(i18n("Opening %1", tc->getDisplayName()));
         this->tc = tc;
         this->start = start;
         this->skip_check = skip_check;
-        if (tc)
+
+        int idx = encodings.indexOf(tc->getTextCodec()->mibEnum());
+        Out(SYS_GEN | LOG_DEBUG) << "Codec: " << QString(tc->getTextCodec()->name()) << " " << idx << endl;
+        m_encoding->setCurrentIndex(idx);
+        connect(m_encoding, SIGNAL(currentIndexChanged(QString)), this, SLOT(onCodecChanged(QString)));
+
+
+        for (Uint32 i = 0; i < tc->getNumFiles(); i++)
         {
-            int idx = encodings.indexOf(tc->getTextCodec()->mibEnum());
-            Out(SYS_GEN | LOG_DEBUG) << "Codec: " << QString(tc->getTextCodec()->name()) << " " << idx << endl;
-            m_encoding->setCurrentIndex(idx);
-            connect(m_encoding, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(onCodecChanged(const QString&)));
-
-
-            for (Uint32 i = 0; i < tc->getNumFiles(); i++)
-            {
-                bt::TorrentFileInterface& file = tc->getTorrentFile(i);
-                file.setEmitDownloadStatusChanged(false);
-            }
-
-            populateFields(location_hint);
-            if (show_file_tree)
-                model = new TorrentFileTreeModel(tc, TorrentFileTreeModel::DELETE_FILES, this);
-            else
-                model = new TorrentFileListModel(tc, TorrentFileTreeModel::DELETE_FILES, this);
-
-            model->setFileNamesEditable(true);
-
-            connect(model, SIGNAL(checkStateChanged()), this, SLOT(updateSizeLabels()));
-            connect(m_downloadLocation, SIGNAL(textChanged(QString)), this, SLOT(downloadLocationChanged(QString)));
-            filter_model->setSourceModel(model);
-            filter_model->setSortRole(Qt::UserRole);
-            m_file_view->setSortingEnabled(true);
-            m_file_view->expandAll();
-
-            updateSizeLabels();
-
-            if (!tc->getStats().multi_file_torrent)
-            {
-                m_select_all->setEnabled(false);
-                m_select_none->setEnabled(false);
-                m_invert_selection->setEnabled(false);
-                m_collapse_all->setEnabled(false);
-                m_expand_all->setEnabled(false);
-            }
-            else
-            {
-                m_collapse_all->setEnabled(show_file_tree);
-                m_expand_all->setEnabled(show_file_tree);
-            }
-
-            m_file_view->setAlternatingRowColors(false);
-            m_file_view->setRootIsDecorated(show_file_tree && tc->getStats().multi_file_torrent);
-            return exec();
+            bt::TorrentFileInterface& file = tc->getTorrentFile(i);
+            file.setEmitDownloadStatusChanged(false);
         }
-        return QDialog::Rejected;
+
+        populateFields(location_hint);
+        if (show_file_tree)
+            model = new TorrentFileTreeModel(tc, TorrentFileTreeModel::DELETE_FILES, this);
+        else
+            model = new TorrentFileListModel(tc, TorrentFileTreeModel::DELETE_FILES, this);
+
+        model->setFileNamesEditable(true);
+
+        connect(model, SIGNAL(checkStateChanged()), this, SLOT(updateSizeLabels()));
+        connect(m_downloadLocation, SIGNAL(textChanged(QString)), this, SLOT(downloadLocationChanged(QString)));
+        filter_model->setSourceModel(model);
+        filter_model->setSortRole(Qt::UserRole);
+        m_file_view->setSortingEnabled(true);
+        m_file_view->expandAll();
+        m_file_view->resizeColumnToContents(0);
+
+        updateSizeLabels();
+
+        bool multi_file_torrent = tc->getStats().multi_file_torrent;
+        bool collapse_expand_enable = show_file_tree && multi_file_torrent;
+        m_collapse_all->setEnabled(collapse_expand_enable);
+        m_expand_all->setEnabled(collapse_expand_enable);
+
+        m_select_all->setEnabled(multi_file_torrent);
+        m_select_none->setEnabled(multi_file_torrent);
+        m_invert_selection->setEnabled(multi_file_torrent);
+        m_expand_all->setEnabled(multi_file_torrent);
+
+        m_file_view->setRootIsDecorated(collapse_expand_enable);
+        m_file_view->setAlternatingRowColors(false);
+        return exec();
     }
 
     void FileSelectDlg::reject()
@@ -180,11 +179,13 @@ namespace kt
     {
         QStringList pe_ex;
 
-        QString cn = m_completedLocation->url().toLocalFile(KUrl::AddTrailingSlash);
+        QString cn = m_completedLocation->url().toLocalFile();
+        if (!cn.endsWith('/')) cn += '/';
         if (m_moveCompleted->isChecked() && !cn.isEmpty())
             move_on_completion_location_history.insert(cn);
 
-        QString dn = m_downloadLocation->url().toLocalFile(KUrl::AddTrailingSlash);
+        QString dn = m_downloadLocation->url().toLocalFile();
+        if (!dn.endsWith('/')) dn += '/';
         if (!dn.isEmpty())
             download_location_history.insert(dn);
 
@@ -365,13 +366,13 @@ namespace kt
         // so that the user selection in the dialog is not
         // overwritten by the group policy
         if (m_moveCompleted->checkState() == Qt::Checked)
-            tc->setMoveWhenCompletedDir(KUrl(cn));
+            tc->setMoveWhenCompletedDir(cn);
         else
-            tc->setMoveWhenCompletedDir(KUrl());
+            tc->setMoveWhenCompletedDir(QString());
 
         // update the last save directory
         Settings::setLastSaveDir(dn);
-        Settings::self()->writeConfig();
+        Settings::self()->save();
         QDialog::accept();
     }
 
@@ -409,7 +410,7 @@ namespace kt
         }
         else
         {
-            dir = Settings::saveDir().toLocalFile();
+            dir = Settings::saveDir();
             if (!Settings::useSaveDir() || dir.isNull())
             {
                 dir = Settings::lastSaveDir();
@@ -418,14 +419,14 @@ namespace kt
             }
         }
 
-        comp_dir = Settings::completedDir().toLocalFile();
-        if (!Settings::useCompletedDir() || comp_dir.isNull())
+        comp_dir = Settings::completedDir();
+        if (!Settings::useCompletedDir() || comp_dir.isEmpty())
         {
             comp_dir = dir;
         }
 
-        m_downloadLocation->setUrl(dir);
-        m_completedLocation->setUrl(comp_dir);
+        m_downloadLocation->setUrl(QUrl::fromLocalFile(dir));
+        m_completedLocation->setUrl(QUrl::fromLocalFile(comp_dir));
         loadGroups();
     }
 
@@ -460,12 +461,12 @@ namespace kt
         {
             m_cmbGroups->setCurrentIndex(selected);
             QString dir = initial_group->groupPolicy().default_save_location;
-            if (!dir.isNull() && bt::Exists(dir))
-                m_downloadLocation->setUrl(KUrl(dir));
+            if (!dir.isEmpty() && bt::Exists(dir))
+                m_downloadLocation->setUrl(QUrl(dir));
 
             dir = initial_group->groupPolicy().default_move_on_completion_location;
-            if (!dir.isNull() && bt::Exists(dir))
-                m_completedLocation->setUrl(KUrl(dir));
+            if (!dir.isEmpty() && bt::Exists(dir))
+                m_completedLocation->setUrl(QUrl::fromLocalFile(dir));
         }
     }
 
@@ -480,14 +481,14 @@ namespace kt
             return;
 
         QString dir = g->groupPolicy().default_save_location;
-        if (!dir.isNull() && bt::Exists(dir))
-            m_downloadLocation->setUrl(KUrl(dir));
+        if (!dir.isEmpty() && bt::Exists(dir))
+            m_downloadLocation->setUrl(QUrl(dir));
 
         dir = g->groupPolicy().default_move_on_completion_location;
-        if (!dir.isNull() && bt::Exists(dir))
+        if (!dir.isEmpty() && bt::Exists(dir))
         {
             m_moveCompleted->setChecked(true);
-            m_completedLocation->setUrl(KUrl(dir));
+            m_completedLocation->setUrl(QUrl::fromLocalFile(dir));
         }
         else
         {
@@ -503,10 +504,10 @@ namespace kt
         updateExistingFiles();
 
         //calculate free disk space
-        KUrl sdir = KUrl(m_downloadLocation->url());
+        QUrl sdir = m_downloadLocation->url();
         while (sdir.isValid() && sdir.isLocalFile() && (!sdir.isEmpty())  && (! QDir(sdir.toLocalFile()).exists()))
         {
-            sdir = sdir.upUrl();
+            sdir = KIO::upUrl(sdir);
         }
 
         Uint64 bytes_free = 0;
@@ -532,7 +533,7 @@ namespace kt
             bytes_to_download -= already_downloaded;
             if (bytes_to_download > bytes_free)
                 lblStatus->setText(
-                    "<font color=\"#ff0000\">" + i18nc("We are %1 bytes short of what we need", "%1 short",
+                    QLatin1String("<font color=\"#ff0000\">") + i18nc("We are %1 bytes short of what we need", "%1 short",
                                                        bt::BytesToString(-1 * (long long)(bytes_free - bytes_to_download))));
             else
                 lblStatus->setText(bt::BytesToString(bytes_free - bytes_to_download));
@@ -545,7 +546,7 @@ namespace kt
         {
             already_downloaded = 0;
             bt::Uint32 found = 0;
-            QString path = m_downloadLocation->url().path(KUrl::AddTrailingSlash) + tc->getDisplayName() + '/';
+            QString path = m_downloadLocation->url().path() + '/' + tc->getDisplayName() + '/';
             for (bt::Uint32 i = 0; i < tc->getNumFiles(); i++)
             {
                 const bt::TorrentFileInterface& file = tc->getTorrentFile(i);
@@ -572,7 +573,7 @@ namespace kt
         }
         else
         {
-            QString path = m_downloadLocation->url().path(KUrl::AddTrailingSlash) + tc->getDisplayName();
+            QString path = m_downloadLocation->url().path() + '/' + tc->getDisplayName();
             if (!bt::Exists(path))
             {
                 m_existing_found->setText(i18n("Existing file: <b>No</b>"));
@@ -680,14 +681,14 @@ namespace kt
     void FileSelectDlg::downloadLocationHistoryTriggered(QAction* act)
     {
         if (!act->data().isNull())
-            m_downloadLocation->setUrl(act->data().toString());
+            m_downloadLocation->setUrl(QUrl::fromLocalFile(act->data().toString()));
         else
             clearDownloadLocationHistory();
     }
     void FileSelectDlg::moveOnCompletionLocationHistoryTriggered(QAction* act)
     {
         if (!act->data().isNull())
-            m_completedLocation->setUrl(act->data().toString());
+            m_completedLocation->setUrl(QUrl::fromLocalFile(act->data().toString()));
         else
             clearMoveOnCompletionLocationHistory();
     }
@@ -741,6 +742,3 @@ namespace kt
         m_completedLocation->setEnabled(on);
     }
 }
-
-#include "fileselectdlg.moc"
-

@@ -25,9 +25,9 @@
 #include <util/ptrmap.h>
 #include <interfaces/peerinterface.h>
 #include <ksharedconfig.h>
-#include <QSortFilterProxyModel>
 
-class KMenu;
+class QSortFilterProxyModel;
+class QMenu;
 
 namespace kt
 {
@@ -64,7 +64,7 @@ namespace kt
         void kickPeer();
 
     private:
-        KMenu* context_menu;
+        QMenu* context_menu;
         QSortFilterProxyModel* pm;
         PeerViewModel* model;
     };

@@ -20,9 +20,9 @@
  ***************************************************************************/
 #include "torrentfiletreemodel.h"
 
-#include <klocale.h>
-#include <kicon.h>
-#include <kmimetype.h>
+#include <klocalizedstring.h>
+#include <QIcon>
+#include <QDebug>
 #include <QTreeView>
 #include <QSortFilterProxyModel>
 #include <bcodec/bdecoder.h>
@@ -33,6 +33,8 @@
 #include <util/functions.h>
 #include <util/log.h>
 #include <util/error.h>
+#include <QMimeDatabase>
+#include <QMimeType>
 
 using namespace bt;
 
@@ -256,7 +258,7 @@ namespace kt
         if (file)
             return;
 
-        enc->write("expanded");
+        enc->write(QByteArrayLiteral("expanded"));
         enc->write((Uint32)(tv->isExpanded(pm->mapFromSource(index)) ? 1 : 0));
 
         int idx = 0;
@@ -264,7 +266,7 @@ namespace kt
         {
             if (!n->file)
             {
-                enc->write(n->name);
+                enc->write(n->name.toUtf8());
                 enc->beginDict();
                 n->saveExpandedState(index.child(idx, 0), pm, tv, enc);
                 enc->end();
@@ -291,8 +293,7 @@ namespace kt
         {
             if (!n->file)
             {
-                BDictNode* d = dict->getDict(n->name);
-                if (d)
+                if (BDictNode* d = dict->getDict(n->name.toUtf8()))
                     n->loadExpandedState(index.child(idx, 0), pm, tv, d);
             }
             idx++;
@@ -330,6 +331,7 @@ namespace kt
 
     void TorrentFileTreeModel::changeTorrent(bt::TorrentInterface* tc)
     {
+        beginResetModel();
         this->tc = tc;
         delete root;
         root = 0;
@@ -340,7 +342,7 @@ namespace kt
             else
                 root = new Node(0, tc->getUserModifiedFileName(), tc->getStats().total_chunks);
         }
-        reset();
+        endResetModel();
     }
 
 
@@ -359,10 +361,11 @@ namespace kt
 
     void TorrentFileTreeModel::onCodecChange()
     {
+        beginResetModel();
         delete root;
         root = 0;
         constructTree();
-        reset();
+        endResetModel();
     }
 
     int TorrentFileTreeModel::rowCount(const QModelIndex& parent) const
@@ -371,22 +374,15 @@ namespace kt
             return 0;
 
         if (!parent.isValid())
-        {
             return 1;
-        }
-        else
-        {
-            Node* n = (Node*)parent.internalPointer();
-            return n->children.count();
-        }
+
+        Node* n = (Node*)parent.internalPointer();
+        return n->children.count();
     }
 
     int TorrentFileTreeModel::columnCount(const QModelIndex& parent) const
     {
-        if (!parent.isValid())
-            return 2;
-        else
-            return 2;
+        return 2;
     }
 
     QVariant TorrentFileTreeModel::headerData(int section, Qt::Orientation orientation, int role) const
@@ -440,12 +436,27 @@ namespace kt
         }
         else if (role == Qt::DecorationRole && index.column() == 0)
         {
+#if 0
+            if (!n->file && n->children.count() <= 0)
+            {
+                qWarning()<<tc;
+                qWarning()<<tc->getStats().torrent_name;
+            }
+
+            if (n->file)
+            {
+                qWarning()<<n;
+                qWarning()<<n->file;
+                qWarning()<<n->file->getPath();
+            }
+#endif
+
             // if this is an empty folder then we are in the single file case
             if (!n->file)
                 return n->children.count() > 0 ?
-                       KIcon("folder") : KIcon(KMimeType::findByPath(tc->getStats().torrent_name)->iconName());
+                       QIcon::fromTheme(QStringLiteral("folder")) : QIcon::fromTheme(QMimeDatabase().mimeTypeForFile(tc->getStats().torrent_name).iconName());
             else
-                return KIcon(KMimeType::findByPath(n->file->getPath())->iconName());
+                return QIcon::fromTheme(QMimeDatabase().mimeTypeForFile(n->file->getPath()).iconName());
         }
         else if (role == Qt::CheckStateRole && index.column() == 0)
         {
@@ -776,4 +787,3 @@ namespace kt
     }
 }
 
-#include "torrentfiletreemodel.moc"

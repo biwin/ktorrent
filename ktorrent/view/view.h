@@ -27,8 +27,8 @@
 #include <interfaces/guiinterface.h>
 #include <ksharedconfig.h>
 
-class KMenu;
-class KAction;
+class QMenu;
+class QAction;
 class KActionCollection;
 
 namespace kt
@@ -166,7 +166,7 @@ namespace kt
         Core* core;
         GUI* gui;
         Group* group;
-        KMenu* header_menu;
+        QMenu* header_menu;
         QMap<QAction*, int> column_idx_map;
         QList<QAction*> column_action_list;
         bt::Uint32 num_torrents;
@@ -178,34 +178,34 @@ namespace kt
         QByteArray default_state;
 
         // actions for the view menu
-        KAction* start_torrent;
-        KAction* force_start_torrent;
-        KAction* start_all;
-        KAction* stop_torrent;
-        KAction* stop_all;
-        KAction* pause_torrent;
-        KAction* unpause_torrent;
-        KAction* remove_torrent;
-        KAction* remove_torrent_and_data;
-        KAction* add_peers;
-        KAction* manual_announce;
-        KAction* do_scrape;
-        KAction* preview;
-        KAction* data_dir;
-        KAction* tor_dir;
-        KAction* move_data;
-        KAction* torrent_properties;
-        KAction* rename_torrent;
-        KAction* remove_from_group;
+        QAction * start_torrent;
+        QAction * force_start_torrent;
+        QAction * start_all;
+        QAction * stop_torrent;
+        QAction * stop_all;
+        QAction * pause_torrent;
+        QAction * unpause_torrent;
+        QAction * remove_torrent;
+        QAction * remove_torrent_and_data;
+        QAction * add_peers;
+        QAction * manual_announce;
+        QAction * do_scrape;
+        QAction * preview;
+        QAction * data_dir;
+        QAction * tor_dir;
+        QAction * move_data;
+        QAction * torrent_properties;
+        QAction * rename_torrent;
+        QAction * remove_from_group;
         QMap<Group*, QAction*> group_actions;
-        KAction* add_to_new_group;
-        KAction* check_data;
-        KAction* open_dir_menu;
-        KAction* groups_menu;
-        KAction* copy_url;
-        KAction* export_torrent;
-        QList<KAction*> configure_columns_list;
-        KAction* speed_limits;
+        QAction * add_to_new_group;
+        QAction * check_data;
+        QAction * open_dir_menu;
+        QAction * groups_menu;
+        QAction * copy_url;
+        QAction * export_torrent;
+        QList<QAction *> configure_columns_list;
+        QAction * speed_limits;
     };
 }
 

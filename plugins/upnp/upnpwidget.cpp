@@ -18,8 +18,7 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  ***************************************************************************/
 #include <QHeaderView>
-#include <klocale.h>
-#include <kglobal.h>
+#include <klocalizedstring.h>
 #include <ksharedconfig.h>
 #include <kmessagebox.h>
 #include <torrent/globals.h>
@@ -54,9 +53,9 @@ namespace kt
         m_devices->setModel(model);
 
         // load the state of the devices treewidget
-        KConfigGroup g = KGlobal::config()->group("UPnPDevicesList");
+        KConfigGroup g = KSharedConfig::openConfig()->group("UPnPDevicesList");
         QByteArray s = QByteArray::fromBase64(g.readEntry("state", QByteArray()));
-        if (!s.isNull())
+        if (!s.isEmpty())
             m_devices->header()->restoreState(s);
 
         m_forward->setEnabled(false);
@@ -74,7 +73,7 @@ namespace kt
     void UPnPWidget::shutdown(bt::WaitJob* job)
     {
         // save the state of the devices treewidget
-        KConfigGroup g = KGlobal::config()->group("UPnPDevicesList");
+        KConfigGroup g = KSharedConfig::openConfig()->group("UPnPDevicesList");
         QByteArray s = m_devices->header()->saveState();
         g.writeEntry("state", s.toBase64());
 
@@ -182,5 +181,3 @@ namespace kt
     }
 
 }
-
-#include "upnpwidget.moc"

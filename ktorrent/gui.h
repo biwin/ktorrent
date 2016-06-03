@@ -22,15 +22,13 @@
 #define KT_GUI_HH
 
 #include <QTimer>
-#include <QStackedWidget>
 #include <util/constants.h>
 #include <interfaces/guiinterface.h>
 #include <kparts/mainwindow.h>
+#include <ksharedconfig.h>
 
-class KUrl;
-class KAction;
+class QAction;
 class KToggleAction;
-class KUrl;
 
 namespace kt
 {
@@ -48,24 +46,26 @@ namespace kt
         Q_OBJECT
     public:
         GUI();
-        virtual ~GUI();
+        ~GUI();
 
         DBus* getDBusInterface() {return dbus_iface;}
 
         // Stuff implemented from GUIInterface
-        virtual KMainWindow* getMainWindow() {return this;}
-        virtual void addPrefPage(PrefPageInterface* page);
-        virtual void removePrefPage(PrefPageInterface* page);
-        virtual void mergePluginGui(Plugin* p);
-        virtual void removePluginGui(Plugin* p);
-        virtual void errorMsg(const QString& err);
-        virtual void errorMsg(KIO::Job* j);
-        virtual void infoMsg(const QString& info);
-        virtual StatusBarInterface* getStatusBar();
-        virtual void addActivity(Activity* act);
-        virtual void removeActivity(Activity* act);
-        virtual TorrentActivityInterface* getTorrentActivity();
-        virtual QSize sizeHint() const;
+        KMainWindow* getMainWindow() {return this;}
+        void addPrefPage(PrefPageInterface* page);
+        void removePrefPage(PrefPageInterface* page);
+        void mergePluginGui(Plugin* p);
+        void removePluginGui(Plugin* p);
+        void errorMsg(const QString& err);
+        void errorMsg(KIO::Job* j);
+        void infoMsg(const QString& info);
+        StatusBarInterface* getStatusBar();
+        void addActivity(Activity* act);
+        void removeActivity(Activity* act);
+        TorrentActivityInterface* getTorrentActivity();
+        QSize sizeHint() const;
+
+        bool event(QEvent *e);
 
         /**
         * Create a XML GUI container (menu or toolbar)
@@ -75,10 +75,10 @@ namespace kt
         QWidget* container(const QString& name);
 
         /// load a torrent
-        void load(const KUrl& url);
+        void load(const QUrl& url);
 
         /// load a torrent silently
-        void loadSilently(const KUrl& url);
+        void loadSilently(const QUrl& url);
 
     public slots:
         /// Update all actions
@@ -91,17 +91,15 @@ namespace kt
         void setPasteDisabled(bool on);
 
         /// Set the current activity
-        virtual void setCurrentActivity(Activity* act);
+        void setCurrentActivity(Activity* act);
 
     private slots:
         void createTorrent();
-        void openTorrent();
-        void openTorrentSilently();
+        void openTorrent(bool silently = false);
+        void openTorrentSilently(){openTorrent(true);}
         void pasteURL();
         void paste();
         void showPrefDialog();
-        void showStatusBar();
-        void showMenuBar();
         void showIPFilter();
         void configureKeys();
         void configureToolbars();
@@ -118,9 +116,9 @@ namespace kt
     private:
         void setupActions();
 
-        virtual void loadState(KSharedConfigPtr cfg);
-        virtual void saveState(KSharedConfigPtr cfg);
-        virtual bool queryClose();
+        void loadState(KSharedConfigPtr cfg);
+        void saveState(KSharedConfigPtr cfg);
+        bool queryClose();
 
     private:
         Core* core;
@@ -135,13 +133,13 @@ namespace kt
 
         KToggleAction* show_status_bar_action;
         KToggleAction* show_menu_bar_action;
-        KAction* open_silently_action;
+        QAction * open_silently_action;
 
-        KAction* paste_url_action;
-        KAction* ipfilter_action;
-        KAction* import_action;
-        KAction* show_kt_action;
-        KAction* paste_action;
+        QAction * paste_url_action;
+        QAction * ipfilter_action;
+        QAction * import_action;
+        QAction * show_kt_action;
+        QAction * paste_action;
     };
 }
 

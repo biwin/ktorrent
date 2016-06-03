@@ -18,15 +18,19 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  ***************************************************************************/
+#include "viewmodel.h"
+
 #include <math.h>
+
 #include <QBrush>
 #include <QColor>
 #include <QPalette>
 #include <QMimeData>
-#include <KLocale>
-#include <KGlobal>
-#include <KIcon>
-#include <KIconLoader>
+#include <QLocale>
+#include <QIcon>
+
+#include <klocalizedstring.h>
+
 #include <util/log.h>
 #include <util/sha1hash.h>
 #include <util/functions.h>
@@ -35,7 +39,6 @@
 #include <torrent/timeestimator.h>
 #include <torrent/queuemanager.h>
 #include <groups/group.h>
-#include "viewmodel.h"
 #include "core.h"
 #include "viewdelegate.h"
 #include "view.h"
@@ -200,6 +203,7 @@ namespace kt
 
     QVariant ViewModel::Item::data(int col) const
     {
+        static QLocale locale;
         const TorrentStats& s = tc->getStats();
         switch (col)
         {
@@ -227,21 +231,21 @@ namespace kt
             break;
         case ETA:
             if (eta == bt::TimeEstimator::NEVER)
-                return QString("%1").arg(QChar(0x221E)); // infinity
+                return QString(QChar(0x221E)); // infinity
             else if (eta != bt::TimeEstimator::ALREADY_FINISHED)
                 return DurationToString(eta);
             else
                 return QVariant();
             break;
         case SEEDERS:
-            return QString("%1 (%2)").arg(QString::number(seeders_connected_to)).arg(QString::number(seeders_total));
+            return QString(QString::number(seeders_connected_to) + QLatin1String(" (") + QString::number(seeders_total) + QLatin1Char(')'));
         case LEECHERS:
-            return QString("%1 (%2)").arg(QString::number(leechers_connected_to)).arg(QString::number(leechers_total));
+            return QString(QString::number(leechers_connected_to) + QLatin1String(" (") + QString::number(leechers_total) + QLatin1Char(')'));
             // xgettext: no-c-format
         case PERCENTAGE:
             return percentage;
         case SHARE_RATIO:
-            return KGlobal::locale()->formatNumber(share_ratio, 2);
+            return locale.toString(share_ratio, 'f', 2);
         case DOWNLOAD_TIME:
             return DurationToString(runtime_dl);
         case SEED_TIME:
@@ -249,7 +253,7 @@ namespace kt
         case DOWNLOAD_LOCATION:
             return tc->getStats().output_path;
         case TIME_ADDED:
-            return KGlobal::locale()->formatDateTime(time_added);
+            return locale.toString(time_added);
         default:
             return QVariant();
         }
@@ -320,7 +324,7 @@ namespace kt
             case bt::CHECKING_DATA:
                 return yellow;
             case bt::ERROR :
-                return Qt::red;
+                return QColor(Qt::red);
             case bt::NOT_STARTED :
             case bt::STOPPED:
             case bt::QUEUED:
@@ -353,31 +357,31 @@ namespace kt
         {
         case NOT_STARTED:
         case STOPPED:
-            return KIcon("kt-stop");
+            return QIcon::fromTheme("kt-stop");
         case SEEDING_COMPLETE:
         case DOWNLOAD_COMPLETE:
-            return KIcon("task-complete");
+            return QIcon::fromTheme("task-complete");
         case SEEDING:
         case SUPERSEEDING:
-            return KIcon("go-up");
+            return QIcon::fromTheme("go-up");
         case DOWNLOADING:
-            return KIcon("go-down");
+            return QIcon::fromTheme("go-down");
         case STALLED:
             if (tc->getStats().completed)
-                return KIcon("go-up");
+                return QIcon::fromTheme("go-up");
             else
-                return KIcon("go-down");
+                return QIcon::fromTheme("go-down");
         case ALLOCATING_DISKSPACE:
-            return KIcon("drive-harddisk");
+            return QIcon::fromTheme("drive-harddisk");
         case ERROR:
         case NO_SPACE_LEFT:
-            return KIcon("dialog-error");
+            return QIcon::fromTheme("dialog-error");
         case QUEUED:
-            return KIcon("download-later");
+            return QIcon::fromTheme("download-later");
         case CHECKING_DATA:
-            return KIcon("kt-check-data");
+            return QIcon::fromTheme("kt-check-data");
         case PAUSED:
-            return KIcon("kt-pause");
+            return QIcon::fromTheme("kt-pause");
         default:
             return QVariant();
         }
@@ -387,8 +391,8 @@ namespace kt
 
     ViewModel::ViewModel(Core* core, View* parent) : QAbstractTableModel(parent), core(core), view(parent)
     {
-        connect(core, SIGNAL(torrentAdded(bt::TorrentInterface*)), this, SLOT(addTorrent(bt::TorrentInterface*)));
-        connect(core, SIGNAL(torrentRemoved(bt::TorrentInterface*)), this, SLOT(removeTorrent(bt::TorrentInterface*)));
+        connect(core, &Core::torrentAdded, this, &ViewModel::addTorrent);
+        connect(core, &Core::torrentRemoved, this, &ViewModel::removeTorrent);
         sort_column = 0;
         sort_order = Qt::AscendingOrder;
         group = 0;
@@ -625,7 +629,8 @@ namespace kt
 
     QVariant ViewModel::data(const QModelIndex& index, int role) const
     {
-        if (!index.isValid() || index.row() >= torrents.count() || index.row() < 0)
+        //there is no point checking index.row() < 0 because isValid already does this
+        if (!index.isValid() || index.row() >= torrents.count())
             return QVariant();
 
         Item* item = (Item*)index.internalPointer();
@@ -653,11 +658,11 @@ namespace kt
             QString tooltip;
             bt::TorrentInterface* tc = item->tc;
             if (tc->loadUrl().isValid())
-                tooltip = i18n("%1<br>Url: <b>%2</b>", tc->getDisplayName(), tc->loadUrl().prettyUrl());
+                tooltip = i18n("%1<br>Url: <b>%2</b>", tc->getDisplayName(), tc->loadUrl().toDisplayString());
             else
                 tooltip = tc->getDisplayName();
 
-            tooltip += "<br/><br/>" + tc->getStats().statusToString();
+            tooltip += QLatin1String("<br/><br/>") + tc->getStats().statusToString();
             if (tc->getTrackersList()->noTrackersReachable())
                 tooltip += i18n("<br/><br/>Unable to contact a tracker.");
 
@@ -688,8 +693,7 @@ namespace kt
 
     bool ViewModel::setData(const QModelIndex& index, const QVariant& value, int role)
     {
-        if (!index.isValid() || index.row() >= torrents.count() || index.row() < 0 ||
-                role != Qt::EditRole || index.column() != NAME)
+        if (!index.isValid() || index.row() >= torrents.count() || role != Qt::EditRole || index.column() != NAME)
             return false;
 
         QString name = value.toString();
@@ -707,7 +711,7 @@ namespace kt
 
     Qt::ItemFlags ViewModel::flags(const QModelIndex& index) const
     {
-        if (!index.isValid() || index.row() >= torrents.count() || index.row() < 0)
+        if (!index.isValid() || index.row() >= torrents.count())
             return QAbstractTableModel::flags(index) | Qt::ItemIsDropEnabled;
 
         Qt::ItemFlags flags = QAbstractTableModel::flags(index) | Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled;
@@ -792,7 +796,7 @@ namespace kt
 
     const bt::TorrentInterface* ViewModel::torrentFromIndex(const QModelIndex& index) const
     {
-        if (index.isValid() && index.row() < torrents.count() && index.row() >= 0)
+        if (index.isValid() && index.row() < torrents.count())
             return torrents[index.row()]->tc;
         else
             return 0;
@@ -800,7 +804,7 @@ namespace kt
 
     bt::TorrentInterface* ViewModel::torrentFromIndex(const QModelIndex& index)
     {
-        if (index.isValid() && index.row() < torrents.count() && index.row() >= 0)
+        if (index.isValid() && index.row() < torrents.count())
             return torrents[index.row()]->tc;
         else
             return 0;
@@ -878,4 +882,3 @@ namespace kt
     }
 }
 
-#include "viewmodel.moc"

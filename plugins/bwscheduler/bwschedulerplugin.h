@@ -21,8 +21,7 @@
 #define KTschedulerPLUGIN_H
 
 #include <QTimer>
-#include <KAction>
-#include <solid/networking.h>
+#include <QAction>
 #include <interfaces/plugin.h>
 #include <interfaces/guiinterface.h>
 #include "screensaver_interface.h"
@@ -46,7 +45,7 @@ namespace kt
     {
         Q_OBJECT
     public:
-        BWSchedulerPlugin(QObject* parent, const QStringList& args);
+        BWSchedulerPlugin(QObject* parent, const QVariantList& args);
         virtual ~BWSchedulerPlugin();
 
         virtual void load();
@@ -58,7 +57,7 @@ namespace kt
         void onLoaded(Schedule* ns);
         void colorsChanged();
         void screensaverActivated(bool on);
-        void networkStatusChanged(Solid::Networking::Status status);
+        void networkStatusChanged(bool online);
 
     private:
         void setNormalLimits();

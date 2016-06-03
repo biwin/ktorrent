@@ -20,41 +20,47 @@
 
 #include "addtrackersdialog.h"
 #include <QRegExp>
+#include <QUrl>
 #include <QApplication>
 #include <QClipboard>
-#include <KLocalizedString>
-#include <KLineEdit>
+#include <QLineEdit>
+#include <QCompleter>
+#include <QDialogButtonBox>
+#include <QVBoxLayout>
+
+#include <klocalizedstring.h>
 
 namespace kt
 {
 
-    AddTrackersDialog::AddTrackersDialog(QWidget* parent, const QStringList& tracker_hints): KDialog(parent)
+    AddTrackersDialog::AddTrackersDialog(QWidget* parent, const QStringList& tracker_hints): QDialog(parent)
     {
-        setButtons(KDialog::Ok | KDialog::Cancel);
-        showButtonSeparator(true);
-        setCaption(i18n("Add Trackers"));
+        setWindowTitle(i18n("Add Trackers"));
         trackers = new KEditListWidget(this);
         trackers->setButtons(KEditListWidget::Add | KEditListWidget::Remove);
 
         // If we find any urls on the clipboard, add them
         QClipboard* clipboard = QApplication::clipboard();
-        QStringList strings = clipboard->text().split(QRegExp("\\s"));
-        foreach (const QString& s, strings)
+        foreach (const QString& s, clipboard->text().split(QRegExp(QLatin1String("\\s"))))
         {
-            KUrl url(s);
-            if (url.isValid() && (url.protocol() == "http" || url.protocol() == "https" || url.protocol() == "udp"))
+            QUrl url(s);
+            if (url.isValid() && (url.scheme() == QLatin1String("http")
+                               || url.scheme() == QLatin1String("https")
+                               || url.scheme() == QLatin1String("udp")))
             {
                 trackers->insertItem(s);
             }
         }
 
-        KCompletion* completion = new KCompletion();
-        completion->insertItems(tracker_hints);
-        completion->setCompletionMode(KGlobalSettings::CompletionPopup);
+        trackers->lineEdit()->setCompleter(new QCompleter(tracker_hints));
 
-        trackers->lineEdit()->setCompletionObject(completion);
+        QDialogButtonBox* box=new QDialogButtonBox(QDialogButtonBox::Ok|QDialogButtonBox::Cancel, this);
+        connect(box,SIGNAL(accepted()),this,SLOT(accept()));
+        connect(box,SIGNAL(rejected()),this,SLOT(reject()));
 
-        setMainWidget(trackers);
+        QVBoxLayout *layout = new QVBoxLayout(this);
+        layout->addWidget(trackers);
+        layout->addWidget(box);
     }
 
     AddTrackersDialog::~AddTrackersDialog()

@@ -21,17 +21,21 @@
 #include "playlistwidget.h"
 
 #include <QVBoxLayout>
+#include <QIcon>
+#include <QFile>
+#include <QFileDialog>
+#include <QHeaderView>
+#include <QSortFilterProxyModel>
+
 #include <ktoolbar.h>
-#include <klocale.h>
-#include <kicon.h>
-#include <kfiledialog.h>
+#include <klocalizedstring.h>
+#include <kurl.h>
+#include <kfilewidget.h>
+#include <krecentdirs.h>
+
 #include "mediaplayer.h"
 #include "mediaplayerpluginsettings.h"
 #include "playlist.h"
-#include <QFile>
-#include <QHeaderView>
-#include <QSortFilterProxyModel>
-#include <QWidgetAction>
 
 
 namespace kt
@@ -47,11 +51,11 @@ namespace kt
         layout->setSpacing(0);
 
 
-        QAction* remove_action = new QAction(KIcon("list-remove"), i18n("Remove"), this);
+        QAction* remove_action = new QAction(QIcon::fromTheme("list-remove"), i18n("Remove"), this);
         connect(remove_action, SIGNAL(triggered(bool)), this, SLOT(removeFiles()));
-        QAction* add_action = new QAction(KIcon("document-open"), i18n("Add Media"), this);
+        QAction* add_action = new QAction(QIcon::fromTheme("document-open"), i18n("Add Media"), this);
         connect(add_action, SIGNAL(triggered(bool)), this, SLOT(addMedia()));
-        QAction* clear_action = new QAction(KIcon("edit-clear-list"), i18n("Clear Playlist"), this);
+        QAction* clear_action = new QAction(QIcon::fromTheme("edit-clear-list"), i18n("Clear Playlist"), this);
         connect(clear_action, SIGNAL(triggered(bool)), this, SLOT(clearPlayList()));
 
         tool_bar = new QToolBar(this);
@@ -86,7 +90,7 @@ namespace kt
                 this, SLOT(onSelectionChanged(const QItemSelection&, const QItemSelection&)));
         connect(view, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(doubleClicked(QModelIndex)));
 
-        menu = new KMenu(this);
+        menu = new QMenu(this);
         menu->addAction(remove_action);
         menu->addSeparator();
         menu->addAction(add_action);
@@ -147,7 +151,7 @@ namespace kt
     {
         KConfigGroup g = cfg->group("PlayListWidget");
         QByteArray d = g.readEntry("play_list_state", QByteArray());
-        if (!d.isNull())
+        if (!d.isEmpty())
             view->header()->restoreState(d);
 
         view->header()->setSortIndicatorShown(true);
@@ -168,12 +172,19 @@ namespace kt
 
     void PlayListWidget::addMedia()
     {
-        QString filter;
-        QStringList files = KFileDialog::getOpenFileNames(KUrl("kfiledialog:///add_media"), filter, this);
+        QString recentDirClass;
+        QStringList files = QFileDialog::getOpenFileNames(this, QString(),
+                                                         KFileWidget::getStartUrl(QUrl("kfiledialog:///add_media"), recentDirClass).toLocalFile());
+
+        if (files.isEmpty())
+            return;
+
+        if (!recentDirClass.isEmpty())
+            KRecentDirs::add(recentDirClass, QFileInfo(files.first()).absolutePath());
+
         foreach (const QString& file, files)
-        {
             play_list->addFile(collection->find(file));
-        }
+
         enableNext(play_list->rowCount() > 0);
     }
 

@@ -19,10 +19,11 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  ***************************************************************************/
 
+#include "weekview.h"
+
 #include <util/log.h>
 #include <QGraphicsItem>
 #include <boost/bind.hpp>
-#include "weekview.h"
 #include "weekscene.h"
 #include "schedule.h"
 
@@ -41,7 +42,7 @@ namespace kt
         connect(scene, SIGNAL(itemMoved(ScheduleItem*, const QTime&, const QTime&, int, int)),
                 this, SIGNAL(itemMoved(ScheduleItem*, const QTime&, const QTime&, int, int)));
 
-        menu = new KMenu(this);
+        menu = new QMenu(this);
         setContextMenuPolicy(Qt::CustomContextMenu);
         connect(this, SIGNAL(customContextMenuRequested(const QPoint&)),
                 this, SLOT(showContextMenu(const QPoint&)));
@@ -155,4 +156,3 @@ namespace kt
     }
 }
 
-#include "weekview.moc"

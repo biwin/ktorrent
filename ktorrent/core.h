@@ -62,10 +62,10 @@ namespace kt
         virtual bool changePort(bt::Uint16 port);
         virtual bt::Uint32 getNumTorrentsRunning() const;
         virtual bt::Uint32 getNumTorrentsNotRunning() const;
-        virtual void load(const KUrl& url, const QString& group);
-        virtual bt::TorrentInterface* load(const QByteArray& data, const KUrl& url, const QString& group, const QString& savedir);
-        virtual void loadSilently(const KUrl& url, const QString& group);
-        virtual bt::TorrentInterface* loadSilently(const QByteArray& data, const KUrl& url, const QString& group, const QString& savedir);
+        virtual void load(const QUrl &url, const QString& group);
+        virtual bt::TorrentInterface* load(const QByteArray& data, const QUrl &url, const QString& group, const QString& savedir);
+        virtual void loadSilently(const QUrl &url, const QString& group);
+        virtual bt::TorrentInterface* loadSilently(const QByteArray& data, const QUrl &url, const QString& group, const QString& savedir);
         virtual void load(const bt::MagnetLink& mlink, const MagnetLinkLoadOptions& options);
         virtual QString findNewTorrentDir() const;
         virtual void loadExistingTorrent(const QString& tor_dir);
@@ -229,7 +229,7 @@ namespace kt
         void startTCPServer(bt::Uint16 port);
         void startUTPServer(bt::Uint16 port);
         bt::TorrentInterface* loadFromFile(const QString& file, const QString& dir, const QString& group, bool silently);
-        bt::TorrentInterface* loadFromData(const QByteArray& data, const QString& dir, const QString& group, bool silently, const KUrl& url);
+        bt::TorrentInterface* loadFromData(const QByteArray& data, const QString& dir, const QString& group, bool silently, const QUrl& url);
 
     public:
         void loadTorrents();
@@ -262,8 +262,8 @@ namespace kt
         kt::QueueManager* qman;
         kt::GroupManager* gman;
         kt::MagnetManager* mman;
-        QMap<KJob*, KUrl> custom_save_locations; // map to store save locations
-        QMap<KUrl, QString> add_to_groups; // Map to keep track of which group to add a torrent to
+        QMap<KJob*, QUrl> custom_save_locations; // map to store save locations
+        QMap<QUrl, QString> add_to_groups; // Map to keep track of which group to add a torrent to
         int sleep_suppression_cookie;
         QMap<bt::TorrentInterface*, bool> delayed_removal;
         bool exiting;

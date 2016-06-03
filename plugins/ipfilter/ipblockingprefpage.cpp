@@ -18,7 +18,7 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.             *
  ***************************************************************************/
-#include <klocale.h>
+#include <klocalizedstring.h>
 #include <util/log.h>
 #include "ipblockingprefpage.h"
 #include "ipfilterpluginsettings.h"
@@ -113,7 +113,7 @@ namespace kt
 
     void IPBlockingPrefPage::downloadClicked()
     {
-        KUrl url = kcfg_filterURL->url();
+        QUrl url = kcfg_filterURL->url();
 
         // block GUI so you cannot do stuff during conversion
         m_download->setEnabled(false);
@@ -162,7 +162,7 @@ namespace kt
         if (j != m_job)
             return;
 
-        KConfigGroup g = KGlobal::config()->group("IPFilterAutoUpdate");
+        KConfigGroup g = KSharedConfig::openConfig()->group("IPFilterAutoUpdate");
         if (!j->error())
         {
             g.writeEntry("last_updated", QDateTime::currentDateTime());
@@ -192,11 +192,11 @@ namespace kt
             return;
         }
 
-        KConfigGroup g = KGlobal::config()->group("IPFilterAutoUpdate");
+        KConfigGroup g = KSharedConfig::openConfig()->group("IPFilterAutoUpdate");
         bool ok = g.readEntry("last_update_ok", true);
         QDate last_updated = g.readEntry("last_updated", QDate());
 
-        if (last_updated.isNull())
+        if (last_updated.isEmpty())
             m_last_updated->setText(i18n("No update done yet."));
         else if (ok)
             m_last_updated->setText(last_updated.toString());
@@ -206,7 +206,7 @@ namespace kt
         if (kcfg_autoUpdate->isChecked())
         {
             QDate next_update;
-            if (last_updated.isNull())
+            if (last_updated.isEmpty())
                 next_update = QDate::currentDate().addDays(kcfg_autoUpdateInterval->value());
             else
                 next_update = last_updated.addDays(kcfg_autoUpdateInterval->value());

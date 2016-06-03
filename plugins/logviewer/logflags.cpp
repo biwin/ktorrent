@@ -17,15 +17,15 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  ***************************************************************************/
-#include <klocale.h>
-#include <kglobal.h>
+#include "logflags.h"
+
+#include <klocalizedstring.h>
 #include <ksharedconfig.h>
 #include <util/log.h>
 #include <util/logsystemmanager.h>
 #include <torrent/globals.h>
-#include <qstring.h>
+#include <QString>
 
-#include "logflags.h"
 #include "logviewer.h"
 #include "logviewerpluginsettings.h"
 
@@ -61,7 +61,7 @@ namespace kt
 
     void LogFlags::updateFlags()
     {
-        KConfigGroup cfg = KGlobal::config()->group("LogFlags");
+        KConfigGroup cfg = KSharedConfig::openConfig()->group("LogFlags");
         log_flags.clear();
         LogSystemManager& lsman = LogSystemManager::instance();
         for (LogSystemManager::iterator i = lsman.begin(); i != lsman.end(); i++)
@@ -161,7 +161,7 @@ namespace kt
         LogFlag& f = log_flags[index.row()];
         f.flag = flag;
 
-        KConfigGroup cfg = KGlobal::config()->group("LogFlags");
+        KConfigGroup cfg = KSharedConfig::openConfig()->group("LogFlags");
         cfg.writeEntry(QString("sys_%1").arg(f.id), flag);
         cfg.sync();
 
@@ -213,7 +213,7 @@ namespace kt
 
     void LogFlags::registered(const QString& sys)
     {
-        KConfigGroup cfg = KGlobal::config()->group("LogFlags");
+        KConfigGroup cfg = KSharedConfig::openConfig()->group("LogFlags");
 
         LogSystemManager& lsman = LogSystemManager::instance();
         LogFlag f;

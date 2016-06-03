@@ -18,17 +18,19 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  ***************************************************************************/
+#include "queuemanagermodel.h"
+
 #include <QColor>
 #include <QMimeData>
-#include <KIcon>
-#include <KLocale>
+#include <QIcon>
+#include <QApplication>
+#include <QLocale>
+#include <klocalizedstring.h>
 #include <util/log.h>
 #include <util/functions.h>
 #include <torrent/queuemanager.h>
 #include <interfaces/torrentinterface.h>
-#include "queuemanagermodel.h"
 #include "settings.h"
-#include <QApplication>
 
 
 using namespace bt;
@@ -264,9 +266,9 @@ namespace kt
         else if (role == Qt::DecorationRole && index.column() == 1)
         {
             if (!tc->getStats().completed)
-                return KIcon("arrow-down");
+                return QIcon::fromTheme("arrow-down");
             else
-                return KIcon("arrow-up");
+                return QIcon::fromTheme("arrow-up");
         }
         else if (role == Qt::FontRole && !search_text.isEmpty())
         {
@@ -565,4 +567,3 @@ namespace kt
 
 }
 
-#include "queuemanagermodel.moc"

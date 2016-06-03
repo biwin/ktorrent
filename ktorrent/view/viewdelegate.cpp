@@ -23,9 +23,7 @@
 #include "view.h"
 #include <QApplication>
 #include <QRect>
-#include <KGlobal>
-#include <KLocale>
-#include <KApplication>
+#include <QLocale>
 #include <QVBoxLayout>
 #include <gui/extender.h>
 
@@ -360,7 +358,7 @@ namespace kt
 
     void ViewDelegate::paintProgressBar(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
     {
-        double progress = index.data().toDouble();
+        int progress = index.data().toInt();
 
         QStyleOptionProgressBar progressBarOption;
         progressBarOption.palette = option.palette;
@@ -368,12 +366,12 @@ namespace kt
         progressBarOption.rect = option.rect;
         progressBarOption.minimum = 0;
         progressBarOption.maximum = 100;
-        progressBarOption.progress = (int)progress;
-        progressBarOption.text = KGlobal::locale()->formatNumber(progress, 2) + "%";
+        progressBarOption.progress = progress;
+        progressBarOption.text = QLocale().toString(progress) + '%';
         progressBarOption.textVisible = true;
         progressBarOption.direction = option.direction;
 
-        KApplication::style()->drawControl(QStyle::CE_ProgressBar, &progressBarOption, painter);
+        QApplication::style()->drawControl(QStyle::CE_ProgressBar, &progressBarOption, painter);
     }
 
 

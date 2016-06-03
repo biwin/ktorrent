@@ -7,14 +7,23 @@
     <x>0</x>
     <y>0</y>
     <width>491</width>
-    <height>423</height>
+    <height>490</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Select Which Files You Want to Download</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
-   <property name="margin">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
     <number>0</number>
    </property>
    <item>
@@ -88,7 +97,7 @@
       </widget>
      </item>
      <item>
-      <widget class="KLineEdit" name="m_filter"/>
+      <widget class="QLineEdit" name="m_filter"/>
      </item>
      <item>
       <widget class="QLabel" name="label">
@@ -122,40 +131,43 @@
        <property name="toolTip">
         <string>All files in the torrent, you can change them by double clicking on them.</string>
        </property>
+       <property name="uniformRowHeights">
+        <bool>true</bool>
+       </property>
       </widget>
      </item>
      <item>
       <layout class="QVBoxLayout">
        <item>
-        <widget class="KPushButton" name="m_select_all">
+        <widget class="QPushButton" name="m_select_all">
          <property name="text">
           <string>Select &amp;All</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="KPushButton" name="m_select_none">
+        <widget class="QPushButton" name="m_select_none">
          <property name="text">
           <string>Select &amp;None</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="KPushButton" name="m_invert_selection">
+        <widget class="QPushButton" name="m_invert_selection">
          <property name="text">
           <string>Invert Selection</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="KPushButton" name="m_collapse_all">
+        <widget class="QPushButton" name="m_collapse_all">
          <property name="text">
           <string>Collapse All</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="KPushButton" name="m_expand_all">
+        <widget class="QPushButton" name="m_expand_all">
          <property name="text">
           <string>Expand All</string>
          </property>
@@ -346,6 +358,13 @@
     </layout>
    </item>
    <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="Line" name="line">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
@@ -363,19 +382,10 @@
    <header>kcombobox.h</header>
   </customwidget>
   <customwidget>
-   <class>KLineEdit</class>
-   <extends>QLineEdit</extends>
-   <header>klineedit.h</header>
-  </customwidget>
-  <customwidget>
-   <class>KPushButton</class>
-   <extends>QPushButton</extends>
-   <header>kpushbutton.h</header>
-  </customwidget>
-  <customwidget>
    <class>KUrlRequester</class>
    <extends>QFrame</extends>
    <header>kurlrequester.h</header>
+   <container>1</container>
   </customwidget>
  </customwidgets>
  <tabstops>
@@ -386,11 +396,6 @@
   <tabstop>m_select_none</tabstop>
   <tabstop>m_invert_selection</tabstop>
  </tabstops>
- <includes>
-  <include location="global">kurlrequester.h</include>
-  <include location="global">klineedit.h</include>
-  <include location="global">kpushbutton.h</include>
- </includes>
  <resources/>
  <connections/>
 </ui>

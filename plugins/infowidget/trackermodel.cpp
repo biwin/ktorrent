@@ -20,7 +20,8 @@
  ***************************************************************************/
 #include "trackermodel.h"
 #include <QList>
-#include <klocale.h>
+#include <QColor>
+#include <klocalizedstring.h>
 #include <interfaces/torrentinterface.h>
 #include <interfaces/trackerinterface.h>
 
@@ -28,11 +29,9 @@ namespace kt
 {
 
     TrackerModel::TrackerModel(QObject* parent)
-        : QAbstractTableModel(parent), tc(0)
+        : QAbstractTableModel(parent), tc(0), running(false)
     {
-        running = false;
     }
-
 
     TrackerModel::~TrackerModel()
     {
@@ -115,7 +114,7 @@ namespace kt
         }
         else if (role == Qt::ForegroundRole && index.column() == 1 && trk->trackerStatus() == bt::TRACKER_ERROR)
         {
-            return Qt::red;
+            return QColor(Qt::red);
         }
 
         return QVariant();
@@ -128,7 +127,7 @@ namespace kt
 
         if (role == Qt::CheckStateRole)
         {
-            KUrl url = trackers.at(index.row())->trk->trackerURL();
+            QUrl url = trackers.at(index.row())->trk->trackerURL();
             tc->getTrackersList()->setTrackerEnabled(url, (Qt::CheckState)value.toUInt() == Qt::Checked);
             return true;
         }
@@ -184,7 +183,7 @@ namespace kt
             for (int i = 0; i < count; i++)
             {
                 Item* item = trackers.takeAt(row);
-                KUrl url = item->trk->trackerURL();
+                QUrl url = item->trk->trackerURL();
                 tc->getTrackersList()->removeTracker(url);
                 delete item;
             }
@@ -210,10 +209,10 @@ namespace kt
     }
 
 
-    KUrl TrackerModel::trackerUrl(const QModelIndex& index)
+    QUrl TrackerModel::trackerUrl(const QModelIndex& index)
     {
         if (!tc || !index.isValid() ||  index.row() < 0 || index.row() >= trackers.count())
-            return KUrl();
+            return QUrl();
 
         return ((Item*)index.internalPointer())->trk->trackerURL();
     }
@@ -228,12 +227,14 @@ namespace kt
 
     //////////////////////////////////////////
 
-    TrackerModel::Item::Item(bt::TrackerInterface* tracker) : trk(tracker)
+    TrackerModel::Item::Item(bt::TrackerInterface* tracker)
+        : trk(tracker)
+        , status(tracker->trackerStatus())
+        , seeders(-1)
+        , leechers(-1)
+        , times_downloaded(-1)
+        , time_to_next_update(0)
     {
-        seeders = leechers = -1;
-        times_downloaded = -1;
-        time_to_next_update = 0;
-        status = tracker->trackerStatus();
     }
 
     bool TrackerModel::Item::update()
@@ -276,7 +277,7 @@ namespace kt
     {
         switch (column)
         {
-        case 0: return trk->trackerURL().prettyUrl();
+        case 0: return trk->trackerURL().toString();
         case 1: return trk->trackerStatusString();
         case 2: return seeders >= 0 ? seeders : QVariant();
         case 3: return leechers >= 0 ? leechers : QVariant();
@@ -285,7 +286,7 @@ namespace kt
         {
             int secs = time_to_next_update;
             if (secs)
-                return QTime().addSecs(secs).toString("mm:ss");
+                return QTime(0,0,0,0).addSecs(secs).toString(QStringLiteral("mm:ss"));
             else
                 return QVariant();
         }
@@ -297,7 +298,7 @@ namespace kt
     {
         switch (column)
         {
-        case 0: return trk->trackerURL().prettyUrl();
+        case 0: return trk->trackerURL().toString();
         case 1: return status;
         case 2: return seeders;
         case 3: return leechers;

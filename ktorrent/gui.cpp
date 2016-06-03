@@ -21,22 +21,20 @@
 
 #include <QTimer>
 #include <QClipboard>
-#include <qdesktopwidget.h>
+#include <QDesktopWidget>
+#include <QAction>
+#include <QMenu>
+#include <QMenuBar>
+#include <QPushButton>
 #include <kconfig.h>
-#include <klocale.h>
-#include <kaction.h>
-#include <kmenu.h>
-#include <kmenubar.h>
 #include <ktoggleaction.h>
 #include <kactioncollection.h>
 #include <kmessagebox.h>
-#include <kstatusbar.h>
-#include <kapplication.h>
 #include <kshortcutsdialog.h>
 #include <kedittoolbar.h>
 #include <kstandardaction.h>
-#include <kfiledialog.h>
-#include <kpushbutton.h>
+#include <kfilewidget.h>
+#include <krecentdirs.h>
 #include <kxmlguifactory.h>
 #include <KNotifyConfigWidget>
 #include <kio/jobclasses.h>
@@ -81,7 +79,7 @@ namespace kt
     {
         //Marker markk("GUI::GUI()");
         part_manager = new KParts::PartManager(this);
-        connect(part_manager, SIGNAL(activePartChanged(KParts::Part*)), this, SLOT(activePartChanged(KParts::Part*)));
+        connect(part_manager, &KParts::PartManager::activePartChanged, this, &GUI::activePartChanged);
         core = new Core(this);
         core->loadTorrents();
 
@@ -89,23 +87,23 @@ namespace kt
 
         central = new CentralWidget(this);
         setCentralWidget(central);
-        connect(central, SIGNAL(changeActivity(Activity*)), this, SLOT(setCurrentActivity(Activity*)));
+        connect(central, &CentralWidget::changeActivity, this, &GUI::setCurrentActivity);
         torrent_activity = new TorrentActivity(core, this, 0);
 
         status_bar = new kt::StatusBar(this);
         setStatusBar(status_bar);
 
         setupActions();
-        setupGUI(Default, "ktorrentui.rc");
+        setupGUI(Default, QStringLiteral("ktorrentui.rc"));
 
         addActivity(torrent_activity);
 
         //mark.update();
-        connect(&timer, SIGNAL(timeout()), this, SLOT(update()));
+        connect(&timer, &QTimer::timeout, this, &GUI::update);
         timer.start(Settings::guiUpdateInterval());
 
         applySettings();
-        connect(core, SIGNAL(settingsChanged()), this, SLOT(applySettings()));
+        connect(core, &Core::settingsChanged, this, &GUI::applySettings);
 
         if (Settings::showSystemTrayIcon())
         {
@@ -117,7 +115,7 @@ namespace kt
 
         dbus_iface = new DBus(this, core, this);
         core->loadPlugins();
-        loadState(KGlobal::config());
+        loadState(KSharedConfig::openConfig());
 
         IPFilterWidget::registerFilterList();
 
@@ -126,10 +124,23 @@ namespace kt
         core->startUpdateTimer();
     }
 
-    GUI:: ~GUI()
+    GUI::~GUI()
     {
         delete core;
     }
+
+    bool GUI::event(QEvent *e)
+    {
+        if (e->type() == QEvent::DeferredDelete)
+        {
+            //HACK to prevent ktorrent from crashing on logout/shotdown (when launched e.g. via alt+f2)
+            delete core; core = 0;
+            return true;
+        }
+
+        return KParts::MainWindow::event(e);
+    }
+
 
     QSize GUI::sizeHint() const
     {
@@ -175,7 +186,7 @@ namespace kt
         if (!pref_dlg)
         {
             pref_dlg = new PrefDialog(this, core);
-            pref_dlg->loadState(KGlobal::config());
+            pref_dlg->loadState(KSharedConfig::openConfig());
         }
 
         pref_dlg->addPrefPage(page);
@@ -203,7 +214,7 @@ namespace kt
             QList<KParts::Part*> parts = part_manager->parts();
             foreach (KParts::Part* part, parts)
             {
-                if (part->domDocument().documentElement().attribute("name") == p->parentPart())
+                if (part->domDocument().documentElement().attribute(QStringLiteral("name")) == p->parentPart())
                 {
                     part->insertChildClient(p);
                     break;
@@ -223,7 +234,7 @@ namespace kt
             QList<KParts::Part*> parts = part_manager->parts();
             foreach (KParts::Part* part, parts)
             {
-                if (part->domDocument().documentElement().attribute("name") == p->parentPart())
+                if (part->domDocument().documentElement().attribute(QStringLiteral("name")) == p->parentPart())
                 {
                     part->removeChildClient(p);
                     break;
@@ -251,58 +262,50 @@ namespace kt
     }
 
 
-    void GUI::load(const KUrl& url)
+    void GUI::load(const QUrl& url)
     {
         core->load(url, QString());
     }
 
-    void GUI::loadSilently(const KUrl& url)
+    void GUI::loadSilently(const QUrl& url)
     {
         core->loadSilently(url, QString());
     }
 
     void GUI::createTorrent()
     {
-        TorrentCreatorDlg dlg(core, this, this);
-        dlg.exec();
+        TorrentCreatorDlg* dlg = new TorrentCreatorDlg(core, this, this);
+        dlg->show();
     }
 
-    void GUI::openTorrentSilently()
+    void GUI::openTorrent(bool silently)
     {
-        QString filter = kt::TorrentFileFilter(true);
-        KUrl::List urls = KFileDialog::getOpenUrls(KUrl("kfiledialog:///openTorrent"), filter, this, i18n("Open Location"));
+        QString recentDirClass;
+        QUrl defaultUrl = KFileWidget::getStartUrl(QUrl(QStringLiteral("kfiledialog:///openTorrent")), recentDirClass);
+        if (!QDir(defaultUrl.toLocalFile()).exists())
+            defaultUrl = QUrl::fromLocalFile(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation));
+        QList<QUrl> urls = QFileDialog::getOpenFileUrls(this, i18n("Open Location"), defaultUrl, kt::TorrentFileFilter(true));
 
-        if (urls.count() == 0)
+        if (urls.isEmpty())
             return;
 
-        foreach (const KUrl& url, urls)
-        {
-            if (url.isValid())
-                core->loadSilently(url, QString());
-        }
-    }
+        if (!recentDirClass.isEmpty() && defaultUrl.toLocalFile()!=urls.first().toLocalFile())
+            KRecentDirs::add(recentDirClass, QFileInfo(urls.first().toLocalFile()).absolutePath());
 
-    void GUI::openTorrent()
-    {
-        QString filter = kt::TorrentFileFilter(true);
-        KUrl::List urls = KFileDialog::getOpenUrls(KUrl("kfiledialog:///openTorrent"), filter, this, i18n("Open Location"));
-
-        if (urls.count() == 0)
-            return;
-        else if (urls.count() == 1)
+        if (urls.count() == 1 && !silently)
         {
-            KUrl url = urls.front();
+            QUrl url = urls.front();
             if (url.isValid())
                 load(url);
         }
         else
         {
             // load multiple torrents silently
-            foreach (const KUrl& url, urls)
+            foreach (const QUrl& url, urls)
             {
                 if (url.isValid())
                 {
-                    if (Settings::openMultipleTorrentsSilently())
+                    if (silently || Settings::openMultipleTorrentsSilently())
                         loadSilently(url);
                     else
                         load(url);
@@ -313,13 +316,12 @@ namespace kt
 
 
 
-
     void GUI::pasteURL()
     {
         PasteDialog dlg(core, this);
-        dlg.loadState(KGlobal::config());
+        dlg.loadState(KSharedConfig::openConfig());
         dlg.exec();
-        dlg.saveState(KGlobal::config());
+        dlg.saveState(KSharedConfig::openConfig());
     }
 
     void GUI::paste()
@@ -332,12 +334,12 @@ namespace kt
         if (text.length() == 0)
             return;
 
-        KUrl url = KUrl(text);
+        QUrl url = QFile::exists(text)?QUrl::fromLocalFile(text):QUrl(text);
 
         if (url.isValid())
             load(url);
         else
-            KMessageBox::error(this, i18n("Invalid URL: %1", url.prettyUrl()));
+            KMessageBox::error(this, i18n("Invalid URL: %1", url.toDisplayString()));
     }
 
     void GUI::showPrefDialog()
@@ -348,26 +350,10 @@ namespace kt
         pref_dlg->updateWidgetsAndShow();
     }
 
-    void GUI::showStatusBar()
-    {
-        if (show_status_bar_action->isChecked())
-            status_bar->show();
-        else
-            status_bar->hide();
-    }
-
-    void GUI::showMenuBar()
-    {
-        if (show_menu_bar_action->isChecked())
-            menuBar()->show();
-        else
-            menuBar()->hide();
-    }
-
     void GUI::showIPFilter()
     {
-        IPFilterWidget dlg(this);
-        dlg.exec();
+        IPFilterWidget* dlg = new IPFilterWidget(this);
+        dlg->show();
     }
 
     void GUI::configureKeys()
@@ -377,9 +363,9 @@ namespace kt
 
     void GUI::configureToolbars()
     {
-        saveMainWindowSettings(KGlobal::config()->group("MainWindow"));
+        //KF5 saveMainWindowSettings(KSharedConfig::openConfig()->group("MainWindow"));
         KEditToolBar dlg(factory());
-        connect(&dlg, SIGNAL(newToolBarConfig()), this, SLOT(newToolBarConfig()));
+        connect(&dlg, &KEditToolBar::newToolBarConfig, this, &GUI::newToolBarConfig);
         dlg.exec();
 
         // Replug action list
@@ -389,62 +375,62 @@ namespace kt
 
     void GUI::newToolBarConfig() // This is called when OK, Apply or Defaults is clicked
     {
-        applyMainWindowSettings(KGlobal::config()->group("MainWindow"));
+        applyMainWindowSettings(KSharedConfig::openConfig()->group("MainWindow"));
     }
 
     void GUI::import()
     {
-        ImportDialog dlg(core, this);
-        dlg.exec();
+        ImportDialog* dlg = new ImportDialog(core, this);
+        dlg->show();
     }
 
     void GUI::setupActions()
     {
         KActionCollection* ac = actionCollection();
-        KAction* new_action = KStandardAction::openNew(this, SLOT(createTorrent()), ac);
+        QAction * new_action = KStandardAction::openNew(this, SLOT(createTorrent()), ac);
         new_action->setToolTip(i18n("Create a new torrent"));
-        KAction* open_action = KStandardAction::open(this, SLOT(openTorrent()), ac);
+        QAction * open_action = KStandardAction::open(this, SLOT(openTorrent()), ac);
         open_action->setToolTip(i18n("Open a torrent"));
         paste_action = KStandardAction::paste(this, SLOT(paste()), ac);
 
-        open_silently_action = new KAction(KIcon(open_action->icon()), i18n("Open Silently"), this);
+        open_silently_action = new QAction(open_action->icon(), i18n("Open Silently"), this);
         open_silently_action->setToolTip(i18n("Open a torrent without asking any questions"));
-        connect(open_silently_action, SIGNAL(triggered()), this, SLOT(openTorrentSilently()));
-        ac->addAction("file_open_silently", open_silently_action);
+        connect(open_silently_action, &QAction::triggered, this, &GUI::openTorrentSilently);
+        ac->addAction(QStringLiteral("file_open_silently"), open_silently_action);
 
         KStandardAction::quit(this, SLOT(quit()), ac);
 
-        show_status_bar_action = KStandardAction::showStatusbar(this, SLOT(showStatusBar()), ac);
-        show_status_bar_action->setIcon(KIcon("kt-show-statusbar"));
+        show_status_bar_action = KStandardAction::showStatusbar(statusBar(), SLOT(setVisible(bool)), ac);
+        show_status_bar_action->setIcon(QIcon::fromTheme(QStringLiteral("kt-show-statusbar")));
 
-        show_menu_bar_action = KStandardAction::showMenubar(this, SLOT(showMenuBar()), ac);
+        show_menu_bar_action = KStandardAction::showMenubar(menuBar(), SLOT(setVisible(bool)), ac);
         KStandardAction::preferences(this, SLOT(showPrefDialog()), ac);
         KStandardAction::keyBindings(this, SLOT(configureKeys()), ac);
         KStandardAction::configureToolbars(this, SLOT(configureToolbars()), ac);
         KStandardAction::configureNotifications(this, SLOT(configureNotifications()), ac);
 
-        paste_url_action = new KAction(KIcon("document-open-remote"), i18n("Open URL"), this);
+        paste_url_action = new QAction(QIcon::fromTheme(QStringLiteral("document-open-remote")), i18n("Open URL"), this);
         paste_url_action->setToolTip(i18n("Open a URL which points to a torrent, magnet links are supported"));
-        paste_url_action->setShortcut(KShortcut(Qt::CTRL + Qt::Key_P));
-        connect(paste_url_action, SIGNAL(triggered()), this, SLOT(pasteURL()));
-        ac->addAction("paste_url", paste_url_action);
+        connect(paste_url_action, &QAction::triggered, this, &GUI::pasteURL);
+        ac->addAction(QStringLiteral("paste_url"), paste_url_action);
+        ac->setDefaultShortcut(paste_url_action, QKeySequence(Qt::CTRL + Qt::Key_P));
 
-        ipfilter_action = new KAction(KIcon("view-filter"), i18n("IP Filter"), this);
+        ipfilter_action = new QAction(QIcon::fromTheme(QStringLiteral("view-filter")), i18n("IP Filter"), this);
         ipfilter_action->setToolTip(i18n("Show the list of blocked IP addresses"));
-        ipfilter_action->setShortcut(KShortcut(Qt::CTRL + Qt::Key_I));
-        connect(ipfilter_action, SIGNAL(triggered()), this, SLOT(showIPFilter()));
-        ac->addAction("ipfilter_action", ipfilter_action);
+        connect(ipfilter_action, &QAction::triggered, this, &GUI::showIPFilter);
+        ac->addAction(QStringLiteral("ipfilter_action"), ipfilter_action);
+        ac->setDefaultShortcut(ipfilter_action, QKeySequence(Qt::CTRL + Qt::Key_I));
 
-        import_action = new KAction(KIcon("document-import"), i18n("Import Torrent"), this);
+        import_action = new QAction(QIcon::fromTheme("document-import"), i18n("Import Torrent"), this);
         import_action->setToolTip(i18n("Import a torrent"));
-        import_action->setShortcut(KShortcut(Qt::SHIFT + Qt::Key_I));
-        connect(import_action, SIGNAL(triggered()), this, SLOT(import()));
-        ac->addAction("import", import_action);
+        connect(import_action, &QAction::triggered, this, &GUI::import);
+        ac->addAction(QStringLiteral("import"), import_action);
+        ac->setDefaultShortcut(import_action, QKeySequence(Qt::SHIFT + Qt::Key_I));
 
-        show_kt_action = new KAction(KIcon("kt-show-hide"), i18n("Show/Hide KTorrent"), this);
-        connect(show_kt_action, SIGNAL(triggered()), this, SLOT(showOrHide()));
-        ac->addAction("show_kt", show_kt_action);
-        show_kt_action->setGlobalShortcut(KShortcut(Qt::ALT + Qt::SHIFT + Qt::Key_T));
+        show_kt_action = new QAction(QIcon::fromTheme(QStringLiteral("kt-show-hide")), i18n("Show/Hide KTorrent"), this);
+        connect(show_kt_action, &QAction::triggered, this, &GUI::showOrHide);
+        ac->addAction(QStringLiteral("show_kt"), show_kt_action);
+        // KF5 show_kt_action->setGlobalShortcut(QKeySequence(Qt::ALT + Qt::SHIFT + Qt::Key_T));
 
         setStandardToolBarMenuEnabled(true);
     }
@@ -534,23 +520,24 @@ namespace kt
 
     bool GUI::queryClose()
     {
-        if (Settings::showSystemTrayIcon() && !KApplication::kApplication()->sessionSaving())
+        if (Settings::showSystemTrayIcon() && !qApp->isSavingSession())
         {
             hide();
-            saveState(KGlobal::config());
+            saveState(KSharedConfig::openConfig());
             return false;
         }
         else
         {
-            saveState(KGlobal::config());
-            QTimer::singleShot(500, KApplication::kApplication(), SLOT(quit()));
+            saveState(KSharedConfig::openConfig());
+            timer.stop();
+            QTimer::singleShot(500, qApp, SLOT(quit()));
             return true;
         }
     }
 
     void GUI::quit()
     {
-        saveState(KGlobal::config());
+        saveState(KSharedConfig::openConfig());
         qApp->quit();
     }
 
@@ -585,5 +572,3 @@ namespace kt
     }
 
 }
-
-#include "gui.moc"

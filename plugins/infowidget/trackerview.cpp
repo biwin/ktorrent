@@ -22,10 +22,10 @@
 
 #include <QHeaderView>
 #include <QClipboard>
-#include <klocale.h>
-#include <kurl.h>
+#include <QUrl>
+#include <kconfiggroup.h>
+#include <klocalizedstring.h>
 #include <kmessagebox.h>
-#include <kglobal.h>
 #include <torrent/globals.h>
 #include <interfaces/trackerinterface.h>
 #include <interfaces/torrentinterface.h>
@@ -64,10 +64,10 @@ namespace kt
                 this, SLOT(currentChanged(const QModelIndex&, const QModelIndex&)));
         connect(m_scrape, SIGNAL(clicked()), this, SLOT(scrapeClicked()));
 
-        m_add_tracker->setIcon(KIcon("list-add"));
-        m_remove_tracker->setIcon(KIcon("list-remove"));
-        m_restore_defaults->setIcon(KIcon("kt-restore-defaults"));
-        m_change_tracker->setIcon(KIcon("kt-change-tracker"));
+        m_add_tracker->setIcon(QIcon::fromTheme(QLatin1String("list-add")));
+        m_remove_tracker->setIcon(QIcon::fromTheme(QLatin1String("list-remove")));
+        m_restore_defaults->setIcon(QIcon::fromTheme(QLatin1String("kt-restore-defaults")));
+        m_change_tracker->setIcon(QIcon::fromTheme(QLatin1String("kt-change-tracker")));
 
 
         setEnabled(false);
@@ -88,7 +88,7 @@ namespace kt
             return;
 
         QStringList trackers = dlg.trackerList();
-        KUrl::List urls;
+        QList<QUrl> urls;
         QStringList invalid;
         // check for invalid urls
         foreach (const QString& t, trackers)
@@ -96,13 +96,15 @@ namespace kt
             if (t.isEmpty())
                 continue;
 
-            KUrl url(t.trimmed());
-            if (!url.isValid() || (url.protocol() != "udp" && url.protocol() != "http" && url.protocol() != "https"))
+            QUrl url(t.trimmed());
+            if (!url.isValid() || (url.scheme() != QLatin1String("udp")
+                                && url.scheme() != QLatin1String("http")
+                                && url.scheme() != QLatin1String("https")))
                 invalid.append(t);
             else
             {
-                if (!tracker_hints.contains(url.prettyUrl()))
-                    tracker_hints.append(url.prettyUrl());
+                if (!tracker_hints.contains(url.toDisplayString()))
+                    tracker_hints.append(url.toDisplayString());
                 urls.append(url);
             }
         }
@@ -112,9 +114,9 @@ namespace kt
             KMessageBox::errorList(this, i18n("Several URL's could not be added because they are malformed:"), invalid);
         }
 
-        KUrl::List dupes;
+        QList<QUrl> dupes;
         QList<bt::TrackerInterface*> tl;
-        foreach (const KUrl& url, urls)
+        foreach (const QUrl &url, urls)
         {
             bt::TrackerInterface* trk = tc.data()->getTrackersList()->addTracker(url, true);
             if (!trk)
@@ -124,9 +126,9 @@ namespace kt
         }
 
         if (dupes.size() == 1)
-            KMessageBox::sorry(0, i18n("There already is a tracker named <b>%1</b>.", dupes.front().prettyUrl()));
+            KMessageBox::sorry(0, i18n("There already is a tracker named <b>%1</b>.", dupes.front().toDisplayString()));
         else if (dupes.size() > 1)
-            KMessageBox::informationList(0, i18n("The following duplicate trackers were not added:"), dupes.toStringList());
+            KMessageBox::informationList(0, i18n("The following duplicate trackers were not added:"), QUrl::toStringList(dupes));
 
         if (!tl.isEmpty())
             model->addTrackers(tl);
@@ -221,6 +223,7 @@ namespace kt
             m_scrape->setEnabled(true);
             model->changeTC(ti);
             currentChanged(m_tracker_list->selectionModel()->currentIndex(), QModelIndex());
+            m_tracker_list->resizeColumnToContents(0);
         }
     }
 
@@ -254,7 +257,7 @@ namespace kt
     {
         KConfigGroup g = cfg->group("TrackerView");
         QByteArray s = g.readEntry("state", QByteArray());
-        if (!s.isNull())
+        if (!s.isEmpty())
         {
             QHeaderView* v = m_tracker_list->header();
             v->restoreState(QByteArray::fromBase64(s));
@@ -262,10 +265,9 @@ namespace kt
         }
 
         QStringList default_hints;
-        default_hints << "udp://tracker.publicbt.com:80/announce" << "udp://tracker.openbittorrent.com:80/announce";
+        default_hints << QStringLiteral("udp://tracker.publicbt.com:80/announce") << QStringLiteral("udp://tracker.openbittorrent.com:80/announce");
         tracker_hints = g.readEntry("tracker_hints", default_hints);
     }
 }
 
 
-#include "trackerview.moc"

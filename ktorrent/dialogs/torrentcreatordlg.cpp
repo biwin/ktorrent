@@ -19,7 +19,8 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  ***************************************************************************/
 #include <QCompleter>
-#include <kfiledialog.h>
+#include <kfilewidget.h>
+#include <krecentdirs.h>
 #include <kmessagebox.h>
 #include <kprogressdialog.h>
 #include <dht/dht.h>
@@ -40,6 +41,7 @@ namespace kt
 {
     TorrentCreatorDlg::TorrentCreatorDlg(Core* core, GUI* gui, QWidget* parent) : KDialog(parent), core(core), gui(gui), mktor(0)
     {
+        setAttribute(Qt::WA_DeleteOnClose);
         tracker_completion = webseeds_completion = nodes_completion = 0;
         setWindowTitle(i18n("Create A Torrent"));
         setupUi(mainWidget());
@@ -131,17 +133,17 @@ namespace kt
 
     void TorrentCreatorDlg::loadCompleterData()
     {
-        QString file = kt::DataDir() + "torrent_creator_known_trackers";
+        QString file = kt::DataDir() + QLatin1String("torrent_creator_known_trackers");
         tracker_completion = new StringCompletionModel(file, this);
         tracker_completion->load();
         m_tracker->setCompleter(new QCompleter(tracker_completion, this));
 
-        file = kt::DataDir() + "torrent_creator_known_webseeds";
+        file = kt::DataDir() + QLatin1String("torrent_creator_known_webseeds");
         webseeds_completion = new StringCompletionModel(file, this);
         webseeds_completion->load();
         m_webseed->setCompleter(new QCompleter(webseeds_completion, this));
 
-        file = kt::DataDir() + "torrent_creator_known_nodes";
+        file = kt::DataDir() + QLatin1String("torrent_creator_known_nodes");
         nodes_completion = new StringCompletionModel(file, this);
         nodes_completion->load();
         m_node->setCompleter(new QCompleter(nodes_completion, this));
@@ -159,11 +161,7 @@ namespace kt
 
     void TorrentCreatorDlg::removeTrackerPressed()
     {
-        QList<QListWidgetItem*> sel = m_tracker_list->selectedItems();
-        foreach (QListWidgetItem* s, sel)
-        {
-            delete s;
-        }
+        qDeleteAll(m_tracker_list->selectedItems());
     }
 
     void TorrentCreatorDlg::moveUpPressed()
@@ -209,9 +207,7 @@ namespace kt
 
     void TorrentCreatorDlg::removeNodePressed()
     {
-        QList<QTreeWidgetItem*> sel = m_node_list->selectedItems();
-        foreach (QTreeWidgetItem* s, sel)
-            delete s;
+        qDeleteAll(m_node_list->selectedItems());
     }
 
     void TorrentCreatorDlg::dhtToggled(bool on)
@@ -246,14 +242,14 @@ namespace kt
 
     void TorrentCreatorDlg::addWebSeedPressed()
     {
-        KUrl url(m_webseed->text());
+        QUrl url(m_webseed->text());
         if (!url.isValid())
         {
-            KMessageBox::error(this, i18n("Invalid URL: %1", url.prettyUrl()));
+            KMessageBox::error(this, i18n("Invalid URL: %1", url.toDisplayString()));
             return;
         }
 
-        if (url.protocol() != "http")
+        if (url.scheme() != QLatin1String("http"))
         {
             KMessageBox::error(this, i18n("Only HTTP is supported for webseeding."));
             return;
@@ -266,11 +262,7 @@ namespace kt
 
     void TorrentCreatorDlg::removeWebSeedPressed()
     {
-        QList<QListWidgetItem*> sel = m_webseed_list->selectedItems();
-        foreach (QListWidgetItem* s, sel)
-        {
-            delete s;
-        }
+        qDeleteAll(m_webseed_list->selectedItems());
     }
 
     void TorrentCreatorDlg::webSeedTextChanged(const QString& str)
@@ -305,7 +297,7 @@ namespace kt
             return;
         }
 
-        KUrl url = m_url->url();
+        QUrl url = m_url->url();
         Uint32 chunk_size_table[] =
         {
             32, 64, 128, 256, 512, 1024, 2048, 4096, 8192
@@ -321,7 +313,7 @@ namespace kt
             for (int i = 0; i < m_node_list->topLevelItemCount(); ++i)
             {
                 QTreeWidgetItem* item = m_node_list->topLevelItem(i);
-                trackers.append(item->text(0) + "," +  item->text(1));
+                trackers.append(item->text(0) + ',' +  item->text(1));
             }
         }
         else
@@ -333,11 +325,11 @@ namespace kt
             }
         }
 
-        KUrl::List webseeds;
+        QList<QUrl> webseeds;
         for (int i = 0; i < m_webseed_list->count(); ++i)
         {
             QListWidgetItem* item = m_webseed_list->item(i);
-            webseeds.append(KUrl(item->text()));
+            webseeds.append(QUrl(item->text()));
         }
 
         try
@@ -365,18 +357,22 @@ namespace kt
         setProgressBarEnabled(false);
         update_timer.stop();
 
-        QString filter = kt::TorrentFileFilter(false);
-        QString s = KFileDialog::getSaveFileName(KUrl("kfiledialog:///openTorrent"), filter,
-                    this, i18n("Choose a file to save the torrent"));
+        QString recentDirClass;
+        QString s = QFileDialog::getSaveFileName(this, i18n("Choose a file to save the torrent"),
+                                                 KFileWidget::getStartUrl(QUrl("kfiledialog:///openTorrent"), recentDirClass).toLocalFile(),
+                                                 kt::TorrentFileFilter(false));
 
-        if (s.isNull())
+        if (s.isEmpty())
         {
             QDialog::reject();
             return;
         }
 
-        if (!s.endsWith(".torrent"))
-            s += ".torrent";
+        if (!recentDirClass.isEmpty())
+            KRecentDirs::add(recentDirClass, QFileInfo(s).absolutePath());
+
+        if (!s.endsWith(QLatin1String(".torrent")))
+            s += QLatin1String(".torrent");
 
         mktor->saveTorrent(s);
         bt::TorrentInterface* tc = core->createTorrent(mktor, m_start_seeding->isChecked());
@@ -423,5 +419,3 @@ namespace kt
     }
 
 }
-
-#include "torrentcreatordlg.moc"

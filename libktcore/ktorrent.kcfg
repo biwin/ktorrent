@@ -8,12 +8,12 @@
 	<group name="downloads">
 		<entry name="maxDownloads" type="Int">
 			<label>Maximum number of downloads (0 = no limit)</label>
-			<default>3</default>
+			<default>5</default>
 			<min>0</min>
 		</entry>
 		<entry name="maxSeeds" type="Int">
 			<label>Maximum number of seeds (0 = no limit)</label>
-			<default>5</default>
+			<default>10</default>
 			<min>0</min>
 		</entry>
 		<entry name="startDownloadsOnLowDiskSpace" type="Int">
@@ -90,21 +90,21 @@
 			<label>Keep seeding after download has finished</label>
 			<default>true</default>
 		</entry>
-		<entry name="tempDir" type="Url">
+		<entry name="tempDir" type="String">
 			<label>Folder to store temporary files</label>
 		</entry>
 		<entry name="useSaveDir" type="Bool">
 			<label>Whether to automatically save downloads to saveDir</label>
 			<default>false</default>
 		</entry>
-		<entry name="saveDir" type="Url">
+		<entry name="saveDir" type="String">
 			<label>Folder to store downloaded files</label>
 		</entry>
 		<entry name="useTorrentCopyDir" type="Bool">
 			<label>Whether to automatically copy .torrent files to torrentCopyDir</label>
 			<default>false</default>
 		</entry>
-		<entry name="torrentCopyDir" type="Url">
+		<entry name="torrentCopyDir" type="String">
 			<label>Folder to copy .torrent files to</label>
 		</entry>
 		<entry name="useCustomIP" type="Bool">
@@ -236,7 +236,7 @@
 			<label>Whether to automatically move completed downloads to completedDir</label>
 			<default>false</default>
 		</entry>
-		<entry name="completedDir" type="Url">
+		<entry name="completedDir" type="String">
 			<label>Folder to move completed downloaded files to</label>
 		</entry>
 		<entry name="maxSeedTime" type="Double">
@@ -244,10 +244,7 @@
 			<default>0</default>
 			<min>0</min>
 		</entry>
-		<entry name="networkInterface" type="Int">
-			<default>0</default>
-			<min>0</min>
-			<max>255</max>
+		<entry name="networkInterface" type="String">
 		</entry>
 		<entry name="openMultipleTorrentsSilently" type="Bool">
 			<default>false</default>
@@ -280,7 +277,7 @@
 			<default>true</default>
 		</entry>
 		<entry name="useQHttpAnnounce" type="Bool">
-			<default>true</default>
+			<default>false</default>
 		</entry>
 		<entry name="lookUpHostnameOfPeers" type="Bool">
 			<default>true</default>

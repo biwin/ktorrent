@@ -42,7 +42,8 @@ namespace kt
 
     void TorrentFileModel::missingFilesMarkedDND()
     {
-        reset();
+        beginResetModel();
+        endResetModel();
     }
 
     void TorrentFileModel::update()
@@ -50,7 +51,8 @@ namespace kt
 
     void TorrentFileModel::onCodecChange()
     {
-        reset();
+        beginResetModel();
+        endResetModel();
     }
 
     Qt::ItemFlags TorrentFileModel::flags(const QModelIndex& index) const
@@ -81,4 +83,3 @@ namespace kt
     }
 }
 
-#include "torrentfilemodel.moc"

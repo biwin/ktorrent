@@ -18,18 +18,17 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  ***************************************************************************/
+#include "core.h"
+
 #include <QNetworkInterface>
-#include <klocale.h>
+#include <QDir>
+#include <QProgressBar>
+#include <klocalizedstring.h>
 #include <kio/job.h>
 #include <kio/copyjob.h>
 #include <kmessagebox.h>
 #include <kstandardguiitem.h>
-#include <kfiledialog.h>
-#include <kapplication.h>
-#include <qprogressbar.h>
-#include <qdir.h>
 #include <solid/powermanagement.h>
-
 
 #include <dbus/dbus.h>
 #include <interfaces/guiinterface.h>
@@ -56,7 +55,6 @@
 #include <net/socketmonitor.h>
 #include <torrent/jobqueue.h>
 #include "settings.h"
-#include "core.h"
 #include "dialogs/fileselectdlg.h"
 #include "dialogs/missingfilesdlg.h"
 #include "gui.h"
@@ -77,24 +75,21 @@ namespace kt
     {
         UpdateCurrentTime();
         qman = new QueueManager();
-        connect(qman, SIGNAL(lowDiskSpace(bt::TorrentInterface*, bool)),
-                this, SLOT(onLowDiskSpace(bt::TorrentInterface*, bool)));
-        connect(qman, SIGNAL(queuingNotPossible(bt::TorrentInterface*)),
-                this, SLOT(enqueueTorrentOverMaxRatio(bt::TorrentInterface*)));
-        connect(qman, SIGNAL(lowDiskSpace(bt::TorrentInterface*, bool)),
-                this, SLOT(onLowDiskSpace(bt::TorrentInterface*, bool)));
-        connect(qman, SIGNAL(orderingQueue()), this, SLOT(beforeQueueReorder()));
-        connect(qman, SIGNAL(queueOrdered()), this, SLOT(afterQueueReorder()));
+        connect(qman, &kt::QueueManager::lowDiskSpace, this, &Core::onLowDiskSpace);
+        connect(qman, &kt::QueueManager::queuingNotPossible, this, &Core::enqueueTorrentOverMaxRatio);
+        connect(qman, &kt::QueueManager::lowDiskSpace, this, &Core::onLowDiskSpace);
+        connect(qman, &kt::QueueManager::orderingQueue, this, &Core::beforeQueueReorder);
+        connect(qman, &kt::QueueManager::queueOrdered, this, &Core::afterQueueReorder);
 
-        data_dir = Settings::tempDir().toLocalFile();
+        data_dir = Settings::tempDir();
         bool dd_not_exist = !bt::Exists(data_dir);
-        if (data_dir == QString::null || dd_not_exist)
+        if (data_dir.isEmpty() || dd_not_exist)
         {
             data_dir = kt::DataDir();
             if (dd_not_exist)
             {
                 Settings::setTempDir(data_dir);
-                Settings::self()->writeConfig();
+                Settings::self()->save();
             }
         }
 
@@ -103,17 +98,14 @@ namespace kt
         if (!data_dir.endsWith(bt::DirSeparator()))
             data_dir += bt::DirSeparator();
 
-        connect(&update_timer, SIGNAL(timeout()), this, SLOT(update()));
+        connect(&update_timer, &QTimer::timeout, this, &Core::update);
 
         // Make sure network interface is set properly before server is initialized
-        if (Settings::networkInterface() != 0)
+        if (!Settings::networkInterface().isEmpty())
         {
-            QList<QNetworkInterface> iface_list = QNetworkInterface::allInterfaces();
-            int iface = Settings::networkInterface();
-            if (iface > iface_list.count())
-                SetNetworkInterface(QString::null);
-            else
-                SetNetworkInterface(iface_list[iface - 1].name());
+        //    QList<QNetworkInterface> iface_list = QNetworkInterface::allInterfaces();
+            QString iface = Settings::networkInterface();
+            SetNetworkInterface(iface);
         }
 
 
@@ -124,15 +116,13 @@ namespace kt
         gman = new kt::GroupManager();
         applySettings();
         gman->loadGroups();
-        connect(gman, SIGNAL(customGroupChanged()), this, SLOT(customGroupChanged()));
+        connect(gman, &kt::GroupManager::customGroupChanged, this, &Core::customGroupChanged);
 
         qRegisterMetaType<bt::MagnetLink>("bt::MagnetLink");
         qRegisterMetaType<kt::MagnetLinkLoadOptions>("kt::MagnetLinkLoadOptions");
-        connect(mman, SIGNAL(metadataDownloaded(bt::MagnetLink, QByteArray, kt::MagnetLinkLoadOptions)),
-                this, SLOT(onMetadataDownloaded(bt::MagnetLink, QByteArray, kt::MagnetLinkLoadOptions)),
-                Qt::QueuedConnection);
+        connect(mman, &kt::MagnetManager::metadataDownloaded, this, &Core::onMetadataDownloaded, Qt::QueuedConnection);
 
-        mman->loadMagnets(kt::DataDir() + "magnets");
+        mman->loadMagnets(kt::DataDir() + QLatin1String("magnets"));
 
         connect(QCoreApplication::instance(), SIGNAL(aboutToQuit()), this, SLOT(onExit()));
     }
@@ -232,7 +222,7 @@ namespace kt
         setMaxSeeds(Settings::maxSeeds());
         setKeepSeeding(Settings::keepSeeding());
 
-        QString tmp = Settings::tempDir().toLocalFile();
+        QString tmp = Settings::tempDir();
         if (tmp.isEmpty())
             tmp = kt::DataDir();
 
@@ -275,9 +265,9 @@ namespace kt
         if (!silently && !Settings::openAllTorrentsSilently())
         {
             FileSelectDlg dlg(qman, gman, group, gui->getMainWindow());
-            dlg.loadState(KGlobal::config());
+            dlg.loadState(KSharedConfig::openConfig());
             bool ret = dlg.execute(tc, &start_torrent, &skip_check, location) == QDialog::Accepted;
-            dlg.saveState(KGlobal::config());
+            dlg.saveState(KSharedConfig::openConfig());
 
             if (!ret)
                 return false;
@@ -337,13 +327,13 @@ namespace kt
             if (!torFile.endsWith(bt::DirSeparator()))
                 torFile += bt::DirSeparator();
 
-            torFile += "torrent";
-            QString destination = Settings::torrentCopyDir().toLocalFile();
+            torFile += QLatin1String("torrent");
+            QString destination = Settings::torrentCopyDir();
             if (!destination.endsWith(bt::DirSeparator()))
                 destination += bt::DirSeparator();
 
-            destination += tc->getStats().torrent_name + ".torrent";
-            KIO::copy(torFile, destination);
+            destination += tc->getStats().torrent_name + QLatin1String(".torrent");
+            KIO::copy(QUrl::fromLocalFile(torFile), QUrl::fromLocalFile(destination));
         }
 
         // add torrent to group if necessary
@@ -363,7 +353,7 @@ namespace kt
         return true;
     }
 
-    bt::TorrentInterface* Core::loadFromData(const QByteArray& data, const QString& dir, const QString& group, bool silently, const KUrl& url)
+    bt::TorrentInterface* Core::loadFromData(const QByteArray& data, const QString& dir, const QString& group, bool silently, const QUrl& url)
     {
         QString tdir = findNewTorrentDir();
         TorrentControl* tc = 0;
@@ -407,7 +397,7 @@ namespace kt
         try
         {
             QByteArray data = bt::LoadFile(target);
-            return loadFromData(data, dir, group, silently, KUrl(target));
+            return loadFromData(data, dir, group, silently, QUrl::fromLocalFile(target));
         }
         catch (bt::Error& err)
         {
@@ -435,7 +425,7 @@ namespace kt
         {
             // load in the file (target is always local)
             QString group;
-            QMap<KUrl, QString>::iterator i = add_to_groups.find(j->url());
+            QMap<QUrl, QString>::iterator i = add_to_groups.find(j->url());
             if (i != add_to_groups.end())
             {
                 group = i.value();
@@ -448,14 +438,14 @@ namespace kt
         }
     }
 
-    void Core::load(const KUrl& url, const QString& group)
+    void Core::load(const QUrl& url, const QString& group)
     {
-        if (url.protocol() == "magnet")
+        if (url.scheme() == QLatin1String("magnet"))
         {
             MagnetLinkLoadOptions options;
             options.silently = false;
             options.group = group;
-            load(bt::MagnetLink(url.prettyUrl()), options);
+            load(bt::MagnetLink(url), options);
         }
         else if (url.isLocalFile())
         {
@@ -467,8 +457,8 @@ namespace kt
         else
         {
             KIO::Job* j = KIO::storedGet(url);
-            connect(j, SIGNAL(result(KJob*)), this, SLOT(downloadFinished(KJob*)));
-            if (!group.isNull())
+            connect(j, &KIO::Job::result, this, &Core::downloadFinished);
+            if (!group.isEmpty())
                 add_to_groups.insert(url, group);
         }
     }
@@ -503,11 +493,11 @@ namespace kt
             }
             else
             {
-                dir = Settings::saveDir().toLocalFile();
+                dir = Settings::saveDir();
             }
 
             QString group;
-            QMap<KUrl, QString>::iterator i = add_to_groups.find(j->url());
+            QMap<QUrl, QString>::iterator i = add_to_groups.find(j->url());
             if (i != add_to_groups.end())
             {
                 group = i.value();
@@ -520,14 +510,14 @@ namespace kt
         }
     }
 
-    void Core::loadSilently(const KUrl& url, const QString& group)
+    void Core::loadSilently(const QUrl &url, const QString& group)
     {
-        if (url.protocol() == "magnet")
+        if (url.scheme() == QLatin1String("magnet"))
         {
             MagnetLinkLoadOptions options;
             options.silently = true;
             options.group = group;
-            load(bt::MagnetLink(url.prettyUrl()), options);
+            load(bt::MagnetLink(url), options);
         }
         else if (url.isLocalFile())
         {
@@ -541,13 +531,13 @@ namespace kt
         {
             // download to a random file in tmp
             KIO::Job* j = KIO::storedGet(url);
-            connect(j, SIGNAL(result(KJob*)), this, SLOT(downloadFinishedSilently(KJob*)));
-            if (!group.isNull())
+            connect(j, &KIO::Job::result, this, &Core::downloadFinishedSilently);
+            if (!group.isEmpty())
                 add_to_groups.insert(url, group);
         }
     }
 
-    bt::TorrentInterface* Core::load(const QByteArray& data, const KUrl& url, const QString& group, const QString& savedir)
+    bt::TorrentInterface* Core::load(const QByteArray& data, const QUrl &url, const QString& group, const QString& savedir)
     {
         QString dir;
         if (savedir.isEmpty() || !bt::Exists(savedir))
@@ -561,7 +551,7 @@ namespace kt
             return 0;
     }
 
-    bt::TorrentInterface* Core::loadSilently(const QByteArray& data, const KUrl& url, const QString& group, const QString& savedir)
+    bt::TorrentInterface* Core::loadSilently(const QByteArray& data, const QUrl &url, const QString& group, const QString& savedir)
     {
         QString dir;
         if (savedir.isEmpty() || !bt::Exists(savedir))
@@ -649,7 +639,7 @@ namespace kt
         while (true)
         {
             QDir d;
-            QString dir = data_dir + QString("tor%1/").arg(i);
+            QString dir = data_dir % QLatin1String("tor") % QString::number(i) % QLatin1Char('/');
             if (!d.exists(dir))
             {
                 return dir;
@@ -667,13 +657,13 @@ namespace kt
         if (!idir.endsWith(bt::DirSeparator()))
             idir += bt::DirSeparator();
 
-        if (!bt::Exists(idir + "torrent"))
+        if (!bt::Exists(idir + QLatin1String("torrent")))
             return;
 
         try
         {
             tc = new TorrentControl();
-            tc->init(qman, bt::LoadFile(idir + "torrent"), idir, QString::null);
+            tc->init(qman, bt::LoadFile(idir + QLatin1String("torrent")), idir, QString::null);
 
             qman->append(tc);
             connectSignals(tc);
@@ -696,7 +686,7 @@ namespace kt
     {
         QDir dir(data_dir);
         QStringList filters;
-        filters << "tor*";
+        filters << QStringLiteral("tor*");
         QStringList sl = dir.entryList(filters, QDir::Dirs);
         for (int i = 0; i < sl.count(); i++)
         {
@@ -709,7 +699,7 @@ namespace kt
         }
 
         gman->torrentsLoaded(qman);
-        qman->loadState(KGlobal::config());
+        qman->loadState(KSharedConfig::openConfig());
         QTimer::singleShot(0, this, SLOT(delayedStart()));
     }
 
@@ -729,8 +719,7 @@ namespace kt
             {
                 // if there are running jobs, schedule delete when they finish
                 delayed_removal.insert(tc, data_to);
-                connect(tc, SIGNAL(runningJobsDone(bt::TorrentInterface*)),
-                        this, SLOT(delayedRemove(bt::TorrentInterface*)));
+                connect(tc, &TorrentControl::runningJobsDone, this, &Core::delayedRemove);
                 return;
             }
 
@@ -774,8 +763,7 @@ namespace kt
             {
                 // if there are running jobs, schedule delete when they finish
                 delayed_removal.insert(tc, data_to);
-                connect(tc, SIGNAL(runningJobsDone(bt::TorrentInterface*)),
-                        this, SLOT(delayedRemove(bt::TorrentInterface*)));
+                connect(tc, &bt::TorrentInterface::runningJobsDone, this, &Core::delayedRemove);
                 i = todo.erase(i);
             }
             else
@@ -858,17 +846,17 @@ namespace kt
         update_timer.stop();
 
         net::SocketMonitor::instance().shutdown();
-        mman->saveMagnets(kt::DataDir() + "magnets");
+        mman->saveMagnets(kt::DataDir() + QLatin1String("magnets"));
         // make sure DHT is stopped
         Globals::instance().getDHT().stop();
         // stop all authentications going on
         AuthenticationMonitor::instance().shutdown();
 
         WaitJob* job = new WaitJob(5000);
-        qman->saveState(KGlobal::config());
+        qman->saveState(KSharedConfig::openConfig());
 
         // Sync the config to be sure everything is saved
-        Settings::self()->writeConfig();
+        Settings::self()->save();
 
         qman->onExit(job);
         // wait for completion of stopped events
@@ -892,7 +880,8 @@ namespace kt
         try
         {
             // do nothing if new and old dir are the same
-            if (KUrl(data_dir) == KUrl(new_dir) || data_dir == (new_dir + bt::DirSeparator()))
+            if (QFileInfo(data_dir).absoluteFilePath().length() && QFileInfo(data_dir).absoluteFilePath() == QFileInfo(new_dir).absoluteFilePath()
+                || data_dir == new_dir || data_dir == (new_dir + bt::DirSeparator()))
                 return true;
 
             update_timer.stop();
@@ -922,7 +911,7 @@ namespace kt
                     rollback(succes);
                     // set back the old data_dir in Settings
                     Settings::setTempDir(data_dir);
-                    Settings::self()->writeConfig();
+                    Settings::self()->save();
                     qman->setSuspendedState(false);
                     update_timer.start(CORE_UPDATE_INTERVAL);
                     return false;
@@ -1280,20 +1269,13 @@ namespace kt
 
     void Core::connectSignals(bt::TorrentInterface* tc)
     {
-        connect(tc, SIGNAL(finished(bt::TorrentInterface*)),
-                this, SLOT(torrentFinished(bt::TorrentInterface*)));
-        connect(tc, SIGNAL(stoppedByError(bt::TorrentInterface*, QString)),
-                this, SLOT(slotStoppedByError(bt::TorrentInterface*, QString)));
-        connect(tc, SIGNAL(seedingAutoStopped(bt::TorrentInterface*, bt::AutoStopReason)),
-                this, SLOT(torrentSeedAutoStopped(bt::TorrentInterface*, bt::AutoStopReason)));
-        connect(tc, SIGNAL(aboutToBeStarted(bt::TorrentInterface*, bool&)),
-                this, SLOT(aboutToBeStarted(bt::TorrentInterface*, bool&)));
-        connect(tc, SIGNAL(corruptedDataFound(bt::TorrentInterface*)),
-                this, SLOT(emitCorruptedData(bt::TorrentInterface*)));
-        connect(tc, SIGNAL(needDataCheck(bt::TorrentInterface*)),
-                this, SLOT(autoCheckData(bt::TorrentInterface*)));
-        connect(tc, SIGNAL(statusChanged(bt::TorrentInterface*)),
-                this, SLOT(onStatusChanged(bt::TorrentInterface*)));
+        connect(tc, &bt::TorrentInterface::finished, this, &Core::torrentFinished);
+        connect(tc, &bt::TorrentInterface::stoppedByError, this, &Core::slotStoppedByError);
+        connect(tc, &bt::TorrentInterface::seedingAutoStopped, this, &Core::torrentSeedAutoStopped);
+        connect(tc, &bt::TorrentInterface::aboutToBeStarted, this, &Core::aboutToBeStarted);
+        connect(tc, &bt::TorrentInterface::corruptedDataFound, this, &Core::emitCorruptedData);
+        connect(tc, &bt::TorrentInterface::needDataCheck, this, &Core::autoCheckData);
+        connect(tc, &bt::TorrentInterface::statusChanged, this, &Core::onStatusChanged);
     }
 
     float Core::getGlobalMaxShareRatio() const
@@ -1383,29 +1365,29 @@ namespace kt
         BEncoderBufferOutput* out = new BEncoderBufferOutput(tmp);
         BEncoder enc(out);
         enc.beginDict();
-        KUrl::List trs = mlink.trackers();
+        QList<QUrl> trs = mlink.trackers();
         if (trs.count())
         {
-            enc.write("announce");
-            enc.write(trs.first().prettyUrl());
+            enc.write(QByteArrayLiteral("announce"));
+            enc.write(trs.first().toDisplayString().toUtf8());
             if (trs.count() > 1)
             {
-                enc.write("announce-list");
+                enc.write(QByteArrayLiteral("announce-list"));
                 enc.beginList();
-                foreach (const KUrl& tracker, trs)
+                foreach (const QUrl &tracker, trs)
                 {
                     enc.beginList();
-                    enc.write(tracker.prettyUrl());
+                    enc.write(tracker.toDisplayString().toUtf8());
                     enc.end();
                 }
                 enc.end();
             }
         }
-        enc.write("info");
+        enc.write(QByteArrayLiteral("info"));
         out->write(data.data(), data.size());
         enc.end();
 
-        KUrl url = mlink.toString();
+        QUrl url(mlink.toString());
 
         bt::TorrentInterface* tc = 0;
         if (options.silently)
@@ -1414,7 +1396,7 @@ namespace kt
             tc = load(tmp, url, options.group, options.location);
 
         if (tc && !options.move_on_completion.isEmpty())
-            tc->setMoveWhenCompletedDir(KUrl(options.move_on_completion));
+            tc->setMoveWhenCompletedDir(options.move_on_completion);
     }
 
 
@@ -1428,7 +1410,7 @@ namespace kt
         if (!group_save_location.isEmpty() && bt::Exists(group_save_location))
             dir = g->groupPolicy().default_save_location;
         else if (Settings::useSaveDir())
-            dir = Settings::saveDir().toLocalFile();
+            dir = Settings::saveDir();
         else
             dir = Settings::lastSaveDir();
 
@@ -1440,6 +1422,3 @@ namespace kt
     }
 
 }
-
-#include "core.moc"
-

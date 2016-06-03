@@ -22,7 +22,8 @@
 
 #include <QHeaderView>
 #include <QSortFilterProxyModel>
-#include <klocale.h>
+#include <klocalizedstring.h>
+#include <kconfiggroup.h>
 #include <interfaces/torrentinterface.h>
 #include <interfaces/torrentfileinterface.h>
 #include <interfaces/chunkdownloadinterface.h>
@@ -122,7 +123,7 @@ namespace kt
     {
         KConfigGroup g = cfg->group("ChunkDownloadView");
         QByteArray s = QByteArray::fromBase64(g.readEntry("state", QByteArray()));
-        if (!s.isNull())
+        if (!s.isEmpty())
         {
             QHeaderView* v = m_chunk_view->header();
             v->restoreState(s);
@@ -132,4 +133,3 @@ namespace kt
     }
 }
 
-#include "chunkdownloadview.moc"

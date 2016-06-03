@@ -25,11 +25,11 @@
 #include <QListView>
 #include <QCheckBox>
 #include <QSortFilterProxyModel>
-#include <KSharedConfigPtr>
+#include <KSharedConfig>
 #include "mediafile.h"
 
 
-class KLineEdit;
+class QLineEdit;
 class KToolBar;
 
 namespace kt
@@ -81,7 +81,7 @@ namespace kt
     private:
         MediaModel* model;
         QListView* media_tree;
-        KLineEdit* search_box;
+        QLineEdit* search_box;
         MediaViewFilter* filter;
         KToolBar* tool_bar;
         QAction* show_incomplete;

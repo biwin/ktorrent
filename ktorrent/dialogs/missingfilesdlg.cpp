@@ -18,14 +18,21 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  ***************************************************************************/
-#include <kicon.h>
+#include "missingfilesdlg.h"
+
+#include <QIcon>
+#include <QFileDialog>
+
+#include <kfilewidget.h>
+#include <krecentdirs.h>
 #include <kiconloader.h>
 #include <kmimetype.h>
 #include <kstandardguiitem.h>
-#include <kfiledialog.h>
 #include <kmessagebox.h>
+#include <KGuiItem>
+#include <KStandardGuiItem>
+
 #include <interfaces/torrentinterface.h>
-#include "missingfilesdlg.h"
 #include <interfaces/torrentfileinterface.h>
 
 namespace kt
@@ -41,7 +48,7 @@ namespace kt
         connect(m_dnd, SIGNAL(clicked()), this, SLOT(dndPressed()));
         connect(m_select_new, SIGNAL(clicked()), this, SLOT(selectNewPressed()));
 
-        m_cancel->setGuiItem(KStandardGuiItem::cancel());
+        KGuiItem::assign(m_cancel, KStandardGuiItem::cancel());
 
         foreach (const QString& s, missing)
         {
@@ -73,10 +80,15 @@ namespace kt
     {
         if (tc->getStats().multi_file_torrent)
         {
-            QString dir = KFileDialog::getExistingDirectory(KUrl("kfiledialog:///saveTorrentData"),
-                          this, i18n("Select the directory where the data now is."));
-            if (dir.isNull())
+            QString recentDirClass;
+            QString dir = QFileDialog::getExistingDirectory(this, i18n("Select the directory where the data now is."),
+                                                            KFileWidget::getStartUrl(QUrl("kfiledialog:///saveTorrentData"), recentDirClass).toLocalFile());
+
+            if (dir.isEmpty())
                 return;
+
+            if (!recentDirClass.isEmpty())
+                KRecentDirs::add(recentDirClass, dir);
 
             QString old = tc->getStats().output_path;
             tc->changeOutputDir(dir, bt::TorrentInterface::FULL_PATH);
@@ -106,10 +118,15 @@ namespace kt
         }
         else
         {
-            QString dir = KFileDialog::getExistingDirectory(KUrl("kfiledialog:///saveTorrentData"),
-                          this, i18n("Select the directory where the data now is."));
-            if (dir.isNull())
+            QString recentDirClass;
+            QString dir = QFileDialog::getExistingDirectory(this, i18n("Select the directory where the data now is."),
+                                                            KFileWidget::getStartUrl(QUrl("kfiledialog:///saveTorrentData"), recentDirClass).toLocalFile());
+
+            if (dir.isEmpty())
                 return;
+
+            if (!recentDirClass.isEmpty())
+                KRecentDirs::add(recentDirClass, dir);
 
             QString old = tc->getDataDir();
             tc->changeOutputDir(dir, 0);
@@ -152,4 +169,3 @@ namespace kt
     }
 }
 
-#include "missingfilesdlg.moc"

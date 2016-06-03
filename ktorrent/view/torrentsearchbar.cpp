@@ -23,8 +23,8 @@
 
 #include <QKeyEvent>
 #include <QHBoxLayout>
-#include <KLocale>
-#include <KIcon>
+#include <klocalizedstring.h>
+#include <QIcon>
 #include <KConfigGroup>
 #include "view.h"
 
@@ -38,14 +38,14 @@ namespace kt
         layout->setMargin(0);
 
         hide_search_bar = new QToolButton(this);
-        hide_search_bar->setIcon(KIcon("window-close"));
+        hide_search_bar->setIcon(QIcon::fromTheme("window-close"));
         hide_search_bar->setAutoRaise(true);
-        connect(hide_search_bar, SIGNAL(clicked(bool)), this, SLOT(hideBar()));
+        connect(hide_search_bar, &QToolButton::clicked, this, &TorrentSearchBar::hideBar);
         connect(this, SIGNAL(filterBarHidden(QString)), view, SLOT(setFilterString(QString)));
 
-        search_bar = new KLineEdit(this);
-        search_bar->setClearButtonShown(true);
-        search_bar->setClickMessage(i18n("Torrent filter"));
+        search_bar = new QLineEdit(this);
+        search_bar->setClearButtonEnabled(true);
+        search_bar->setPlaceholderText(i18n("Torrent filter"));
         connect(search_bar, SIGNAL(textChanged(QString)), view, SLOT(setFilterString(QString)));
         connect(this, SIGNAL(filterBarShown(QString)), view, SLOT(setFilterString(QString)));
 

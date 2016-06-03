@@ -34,7 +34,7 @@ namespace kt
     {
         Q_OBJECT
     public:
-        ShutdownPlugin(QObject* parent, const QStringList& args);
+        ShutdownPlugin(QObject* parent, const QVariantList& args);
         virtual ~ShutdownPlugin();
 
         virtual bool versionCheck(const QString& version) const;
@@ -55,7 +55,7 @@ namespace kt
 
     private:
         KToggleAction* shutdown_enabled;
-        KAction* configure_shutdown;
+        QAction * configure_shutdown;
         ShutdownRuleSet* rules;
     };
 

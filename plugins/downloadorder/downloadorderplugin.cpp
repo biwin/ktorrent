@@ -18,35 +18,34 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  ***************************************************************************/
+#include "downloadorderplugin.h"
 #include <kmainwindow.h>
 #include <kactioncollection.h>
-#include <kgenericfactory.h>
-#include <kglobal.h>
-#include <klocale.h>
+#include <kpluginfactory.h>
+#include <klocalizedstring.h>
 #include <util/fileops.h>
 #include <interfaces/guiinterface.h>
 #include <interfaces/coreinterface.h>
 #include <interfaces/torrentinterface.h>
 #include <interfaces/torrentfileinterface.h>
 #include <torrent/queuemanager.h>
-#include "downloadorderplugin.h"
-#include "downloadorderdialog.h"
 #include "downloadordermanager.h"
+#include "downloadorderdialog.h"
 
-K_EXPORT_COMPONENT_FACTORY(ktdownloadorderplugin, KGenericFactory<kt::DownloadOrderPlugin>("ktdownloadorderplugin"))
+
+K_PLUGIN_FACTORY_WITH_JSON(ktorrent_downloadorder, "ktorrent_downloadorder.json", registerPlugin<kt::DownloadOrderPlugin>();)
 
 using namespace bt;
 
 namespace kt
 {
-
-    DownloadOrderPlugin::DownloadOrderPlugin(QObject* parent, const QStringList& args): Plugin(parent)
+    DownloadOrderPlugin::DownloadOrderPlugin(QObject* parent, const QVariantList &args): Plugin(parent)
     {
         Q_UNUSED(args);
-        download_order_action = new KAction(KIcon("view-sort-ascending"), i18n("File Download Order"), this);
+        download_order_action = new QAction(QIcon::fromTheme("view-sort-ascending"), i18n("File Download Order"), this);
         connect(download_order_action, SIGNAL(triggered()), this, SLOT(showDownloadOrderDialog()));
         actionCollection()->addAction("download_order", download_order_action);
-        setXMLFile("ktdownloadorderpluginui.rc");
+        setXMLFile("ktorrent_downloadorderui.rc");
         managers.setAutoDelete(true);
     }
 
@@ -121,7 +120,7 @@ namespace kt
 
     void DownloadOrderPlugin::torrentAdded(bt::TorrentInterface* tc)
     {
-        if (bt::Exists(tc->getTorDir() + "download_order"))
+        if (bt::Exists(tc->getTorDir() + QLatin1String("download_order")))
         {
             DownloadOrderManager* m = createManager(tc);
             m->load();
@@ -136,3 +135,5 @@ namespace kt
         managers.erase(tc);
     }
 }
+
+#include <downloadorderplugin.moc>

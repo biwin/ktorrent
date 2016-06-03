@@ -22,11 +22,12 @@
 #include "core.h"
 #include <QClipboard>
 #include <QApplication>
-#include <KUrl>
-#include <KLineEdit>
+#include <QUrl>
+#include <QLineEdit>
 #include <KMessageBox>
-#include <KLocale>
+#include <klocalizedstring.h>
 #include <KStandardGuiItem>
+#include <ksharedconfig.h>
 #include <groups/groupmanager.h>
 
 namespace kt
@@ -41,7 +42,7 @@ namespace kt
         QClipboard* cb = QApplication::clipboard();
         QString text = cb->text(QClipboard::Clipboard);
 
-        KUrl url = KUrl(text);
+        QUrl url = QUrl(text);
 
         if (url.isValid())
             m_url->setText(text);
@@ -88,7 +89,7 @@ namespace kt
 
     void PasteDialog::accept()
     {
-        KUrl url = KUrl(m_url->text());
+        QUrl url = QUrl(m_url->text());
         if (url.isValid())
         {
             QString group;
@@ -108,4 +109,3 @@ namespace kt
     }
 }
 
-#include "pastedialog.moc"

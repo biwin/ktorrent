@@ -26,12 +26,12 @@
 #include <util/constants.h>
 #include <interfaces/functions.h>
 
-#include <QtGui>
-#include <QtCore>
+#include <QUrl>
+#include <QFileDialog>
 
 #include <KMessageBox>
-#include <KFileDialog>
-#include <KUrl>
+#include <KGuiItem>
+#include <KStandardGuiItem>
 
 #include "ipfilterlist.h"
 
@@ -48,16 +48,17 @@ namespace kt
     IPFilterWidget::IPFilterWidget(QWidget* parent)
         : KDialog(parent)
     {
+        setAttribute(Qt::WA_DeleteOnClose);
         setupUi(mainWidget());
         setButtons(KDialog::None);
         setCaption(i18n("IP Filter List"));
 
-        m_add->setGuiItem(KStandardGuiItem::add());
-        m_clear->setGuiItem(KStandardGuiItem::clear());
-        m_save_as->setGuiItem(KStandardGuiItem::saveAs());
-        m_open->setGuiItem(KStandardGuiItem::open());
-        m_remove->setGuiItem(KStandardGuiItem::remove());
-        m_close->setGuiItem(KStandardGuiItem::close());
+        KGuiItem::assign(m_add, KStandardGuiItem::add());
+        KGuiItem::assign(m_clear, KStandardGuiItem::clear());
+        KGuiItem::assign(m_save_as, KStandardGuiItem::saveAs());
+        KGuiItem::assign(m_open, KStandardGuiItem::open());
+        KGuiItem::assign(m_remove, KStandardGuiItem::remove());
+        KGuiItem::assign(m_close, KStandardGuiItem::close());
 
         registerFilterList();
 
@@ -77,20 +78,20 @@ namespace kt
         {
             filter_list = new IPFilterList();
             AccessManager::instance().addBlockList(filter_list);
-            loadFilter(kt::DataDir() + "ip_filter");
+            loadFilter(kt::DataDir() + QLatin1String("ip_filter"));
         }
     }
 
 
     void IPFilterWidget::setupConnections()
     {
-        connect(m_add, SIGNAL(clicked()), this, SLOT(add()));
-        connect(m_close, SIGNAL(clicked()), this, SLOT(accept()));
-        connect(m_clear, SIGNAL(clicked()), this, SLOT(clear()));
-        connect(m_save_as, SIGNAL(clicked()), this, SLOT(save()));
-        connect(m_open, SIGNAL(clicked()), this, SLOT(open()));
-        connect(m_remove, SIGNAL(clicked()), this, SLOT(remove()));
-        connect(this, SIGNAL(closeClicked()), this, SLOT(reject()));
+        connect(m_add, &QPushButton::clicked, this, &IPFilterWidget::add);
+        connect(m_close, &QPushButton::clicked, this, &IPFilterWidget::accept);
+        connect(m_clear, &QPushButton::clicked, this, &IPFilterWidget::clear);
+        connect(m_save_as, &QPushButton::clicked, this, &IPFilterWidget::save);
+        connect(m_open, &QPushButton::clicked, this, &IPFilterWidget::open);
+        connect(m_remove, &QPushButton::clicked, this, &IPFilterWidget::remove);
+        connect(this, &IPFilterWidget::closeClicked, this, &IPFilterWidget::reject);
     }
 
     void IPFilterWidget::add()
@@ -136,7 +137,8 @@ namespace kt
 
     void IPFilterWidget::open()
     {
-        QString lf = KFileDialog::getOpenFileName(KUrl("kfiledialog:///openTorrent"), "*.txt|", this, i18n("Choose a file"));
+        QString lf = QFileDialog::getOpenFileName(this, i18n("Choose a file"),
+                                                 i18n("Text files") + QLatin1String(" (*.txt)"));
 
         if (lf.isEmpty())
             return;
@@ -148,7 +150,8 @@ namespace kt
 
     void IPFilterWidget::save()
     {
-        QString sf = KFileDialog::getSaveFileName(KUrl("kfiledialog:///openTorrent"), "*.txt|", this, i18n("Choose a filename to save under"));
+        QString sf = QFileDialog::getSaveFileName(this, i18n("Choose a filename to save under"),
+                                                 i18n("Text files") + QLatin1String(" (*.txt)"));
 
         if (sf.isEmpty())
             return;
@@ -158,7 +161,7 @@ namespace kt
 
     void IPFilterWidget::accept()
     {
-        saveFilter(kt::DataDir() + "ip_filter");
+        saveFilter(kt::DataDir() + QLatin1String("ip_filter"));
         KDialog::accept();
     }
 
@@ -189,10 +192,9 @@ namespace kt
 
         QTextStream stream(&dat);
         QString line;
-        QRegExp rx("(([*]|[0-9]{1,3}).([*]|[0-9]{1,3}).([*]|[0-9]{1,3}).([*]|[0-9]{1,3}))"
-                   "|(([0-9]{1,3}).([0-9]{1,3}).([0-9]{1,3}).([0-9]{1,3})-"
-                   "([0-9]{1,3}).([0-9]{1,3}).([0-9]{1,3}).([0-9]{1,3}))");
-        QRegExpValidator v(rx, 0);
+        QRegExpValidator v(QRegExp(QStringLiteral("(([*]|[0-9]{1,3}).([*]|[0-9]{1,3}).([*]|[0-9]{1,3}).([*]|[0-9]{1,3}))"
+                                                  "|(([0-9]{1,3}).([0-9]{1,3}).([0-9]{1,3}).([0-9]{1,3})-"
+                                                  "([0-9]{1,3}).([0-9]{1,3}).([0-9]{1,3}).([0-9]{1,3}))")), 0);
 
         bool err = false;
         int pos = 0;
@@ -223,4 +225,3 @@ namespace kt
         dat.close();
     }
 }
-#include "ipfilterwidget.moc"

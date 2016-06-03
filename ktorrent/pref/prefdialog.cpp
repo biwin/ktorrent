@@ -19,7 +19,7 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  ***************************************************************************/
 
-#include <klocale.h>
+#include <klocalizedstring.h>
 #include <kconfigdialogmanager.h>
 #include "settings.h"
 #include "prefdialog.h"
@@ -165,7 +165,5 @@ namespace kt
 
 
 }
-
-#include "prefdialog.moc"
 
 // kate: indent-mode cstyle; indent-width 4; replace-tabs on; mixed-indent off;

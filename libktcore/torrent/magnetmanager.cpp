@@ -39,7 +39,7 @@ DownloadSlot::DownloadSlot(QObject *parent)
     timer = new QTimer(parent);
     timer->setSingleShot(true);
     timer->setInterval(timerDuration);
-    connect(timer, SIGNAL(timeout()), this, SLOT(onTimeout()));
+    connect(timer, &QTimer::timeout, this, &DownloadSlot::onTimeout);
 }
 
 DownloadSlot::~DownloadSlot()
@@ -127,8 +127,7 @@ void MagnetManager::addMagnet(const bt::MagnetLink& mlink, const kt::MagnetLinkL
         return; // Already managed, do nothing
 
     MagnetDownloader* md = new MagnetDownloader(mlink, options, this);
-    connect(md, SIGNAL(foundMetadata(bt::MagnetDownloader*, QByteArray)),
-            this, SLOT(onDownloadFinished(bt::MagnetDownloader*, QByteArray)));
+    connect(md, &MagnetDownloader::foundMetadata, this, &MagnetManager::onDownloadFinished);
 
     int updateIndex = 0;
     int updateCount = 0;
@@ -284,7 +283,7 @@ void MagnetManager::setDownloadingSlots(bt::Uint32 count)
             DownloadSlot* slot = new DownloadSlot();
             slot->setTimerDuration(timerDuration);
             freeDownloadingSlots.push_back(slot);
-            connect(slot, SIGNAL(timeout(int)), this, SLOT(onSlotTimeout(int)));
+            connect(slot, &DownloadSlot::timeout, this, &MagnetManager::onSlotTimeout);
         }
         updateIndex = startNextQueuedMagnets();
         updateCount = slotsToAdd;
@@ -404,17 +403,17 @@ void MagnetManager::loadMagnets(const QString& file)
         for (Uint32 i = 0; i < ml->getNumChildren(); i++)
         {
             BDictNode* dict = ml->getDict(i);
-            MagnetLink mlink(dict->getString("magnet", 0));
+            MagnetLink mlink(dict->getString(QByteArrayLiteral("magnet"), 0));
             MagnetLinkLoadOptions options;
-            bool stopped = dict->getInt("stopped") == 1;
-            options.silently = dict->getInt("silent") == 1;
+            bool stopped = dict->getInt(QByteArrayLiteral("stopped")) == 1;
+            options.silently = dict->getInt(QByteArrayLiteral("silent")) == 1;
 
             if (dict->keys().contains("group"))
-                options.group = dict->getString("group", 0);
+                options.group = dict->getString(QByteArrayLiteral("group"), 0);
             if (dict->keys().contains("location"))
-                options.location = dict->getString("location", 0);
+                options.location = dict->getString(QByteArrayLiteral("location"), 0);
             if (dict->keys().contains("move_on_completion"))
-                options.move_on_completion = dict->getString("move_on_completion", 0);
+                options.move_on_completion = dict->getString(QByteArrayLiteral("move_on_completion"), 0);
 
             addMagnet(mlink, options, stopped);
         }
@@ -450,12 +449,12 @@ void MagnetManager::saveMagnets(const QString& file)
 void MagnetManager::writeEncoderInfo(bt::BEncoder &enc, kt::MagnetDownloader* md)
 {
     enc.beginDict();
-    enc.write("magnet", md->magnetLink().toString());
-    enc.write("stopped", stoppedHashes.contains(md->magnetLink().infoHash()));
-    enc.write("silent", md->options.silently);
-    enc.write("group", md->options.group);
-    enc.write("location", md->options.location);
-    enc.write("move_on_completion", md->options.move_on_completion);
+    enc.write(QByteArrayLiteral("magnet"), md->magnetLink().toString().toUtf8());
+    enc.write(QByteArrayLiteral("stopped"), stoppedHashes.contains(md->magnetLink().infoHash()));
+    enc.write(QByteArrayLiteral("silent"), md->options.silently);
+    enc.write(QByteArrayLiteral("group"), md->options.group.toUtf8());
+    enc.write(QByteArrayLiteral("location"), md->options.location.toUtf8());
+    enc.write(QByteArrayLiteral("move_on_completion"), md->options.move_on_completion.toUtf8());
     enc.end();
 }
 

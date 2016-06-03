@@ -19,8 +19,8 @@
  ***************************************************************************/
 #include <QHeaderView>
 #include <QSortFilterProxyModel>
-#include <KPushButton>
-#include <klocale.h>
+#include <QPushButton>
+#include <klocalizedstring.h>
 #include <util/constants.h>
 #include <util/log.h>
 #include <interfaces/functions.h>
@@ -46,7 +46,7 @@ namespace kt
     {
         setButtons(KDialog::Ok | KDialog::Apply | KDialog::Cancel);
         setupUi(mainWidget());
-        setWindowIcon(KIcon("kt-speed-limits"));
+        setWindowIcon(QIcon::fromTheme("kt-speed-limits"));
         setWindowTitle(i18n("Speed Limits"));
 
         model = new SpeedLimitsModel(core, this);
@@ -65,7 +65,7 @@ namespace kt
 
         connect(this, SIGNAL(applyClicked()), this, SLOT(apply()));
 
-        KPushButton* apply_btn = button(KDialog::Apply);
+        QPushButton* apply_btn = button(KDialog::Apply);
         apply_btn->setEnabled(false);
         connect(model, SIGNAL(enableApply(bool)), apply_btn, SLOT(setEnabled(bool)));
 
@@ -107,7 +107,7 @@ namespace kt
 
     void SpeedLimitsDlg::saveState()
     {
-        KConfigGroup g = KGlobal::config()->group("SpeedLimitsDlg");
+        KConfigGroup g = KSharedConfig::openConfig()->group("SpeedLimitsDlg");
         QByteArray s = m_speed_limits_view->header()->saveState();
         g.writeEntry("view_state", s.toBase64());
         g.writeEntry("size", size());
@@ -115,9 +115,9 @@ namespace kt
 
     void SpeedLimitsDlg::loadState()
     {
-        KConfigGroup g = KGlobal::config()->group("SpeedLimitsDlg");
+        KConfigGroup g = KSharedConfig::openConfig()->group("SpeedLimitsDlg");
         QByteArray s = QByteArray::fromBase64(g.readEntry("view_state", QByteArray()));
-        if (!s.isNull())
+        if (!s.isEmpty())
         {
             m_speed_limits_view->header()->restoreState(s);
             m_speed_limits_view->header()->setSortIndicatorShown(true);
@@ -162,7 +162,7 @@ namespace kt
         if (apply)
         {
             kt::ApplySettings();
-            Settings::self()->writeConfig();
+            Settings::self()->save();
         }
     }
 
@@ -172,6 +172,4 @@ namespace kt
     }
 
 }
-
-#include "speedlimitsdlg.moc"
 

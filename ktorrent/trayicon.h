@@ -21,16 +21,10 @@
 #ifndef TRAYICON_H
 #define TRAYICON_H
 
-#include <KIcon>
-#include <KMenu>
+#include <QMenu>
 #include <KStatusNotifierItem>
 #include <util/constants.h>
-
-namespace bt
-{
-
-    class TorrentInterface;
-}
+#include <interfaces/torrentinterface.h>
 
 using namespace bt;
 
@@ -80,7 +74,7 @@ namespace kt
         void hide();
 
         /// Get the co
-        KMenu* contextMenu();
+        QMenu* contextMenu();
 
     private:
         void showPassivePopup(const QString& msg, const QString& titile);
@@ -160,17 +154,17 @@ namespace kt
 
     private:
         Core* core;
+        GUI* mwnd;
         int previousDownloadHeight;
         int previousUploadHeight;
         SetMaxRate* max_upload_rate;
         SetMaxRate* max_download_rate;
-        GUI* mwnd;
         KStatusNotifierItem* status_notifier_item;
         bool queue_suspended;
-        KMenu* menu;
+        QMenu* menu;
     };
 
-    class SetMaxRate : public KMenu
+    class SetMaxRate : public QMenu
     {
         Q_OBJECT
     public:

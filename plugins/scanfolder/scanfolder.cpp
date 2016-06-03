@@ -20,9 +20,10 @@
 #include "scanfolder.h"
 
 #include <QDir>
-#include <KLocale>
+#include <klocalizedstring.h>
 #include <KFileItem>
 #include <KConfigGroup>
+#include <kglobal.h>
 #include <kio/job.h>
 #include <util/log.h>
 #include <util/functions.h>
@@ -37,7 +38,7 @@ using namespace bt;
 namespace kt
 {
 
-    ScanFolder::ScanFolder(ScanThread* scanner, const KUrl& dir, bool recursive)
+    ScanFolder::ScanFolder(ScanThread* scanner, const QUrl &dir, bool recursive)
         : scanner(scanner),
           scan_directory(dir),
           watch(0),
@@ -45,7 +46,7 @@ namespace kt
     {
         bt::Out(SYS_SNF | LOG_NOTICE) << "ScanFolder: scanning " << dir << endl;
 
-        KConfigGroup config(KGlobal::config(), "DirWatch");
+        KConfigGroup config(KSharedConfig::openConfig(), "DirWatch");
         config.writeEntry("NFSPollInterval", 5000);
         config.writeEntry("nfsPreferredMethod", "Stat"); // Force the usage of Stat method for NFS
         config.sync();
@@ -74,7 +75,7 @@ namespace kt
             return;
 
         // ignore loaded directories
-        if (dir.dirName() == i18n("loaded"))
+        if (dir.dirName() == i18nc("folder name part", "loaded"))
             return;
 
         Out(SYS_SNF | LOG_NOTICE) << "Directory dirty: " << path << endl;
@@ -92,5 +93,3 @@ namespace kt
     }
 
 }
-
-#include "scanfolder.moc"

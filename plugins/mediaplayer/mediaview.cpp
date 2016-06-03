@@ -21,9 +21,9 @@
 #include <QHeaderView>
 #include <QVBoxLayout>
 #include <QSortFilterProxyModel>
-#include <KLineEdit>
-#include <KIcon>
-#include <KLocale>
+#include <QLineEdit>
+#include <QIcon>
+#include <klocalizedstring.h>
 #include <KToolBar>
 #include <util/log.h>
 #include "mediaview.h"
@@ -98,17 +98,17 @@ namespace kt
         tool_bar = new KToolBar(this);
         hbox->addWidget(tool_bar);
 
-        show_incomplete = tool_bar->addAction(KIcon("task-ongoing"), i18n("Show incomplete files"));
+        show_incomplete = tool_bar->addAction(QIcon::fromTheme("task-ongoing"), i18n("Show incomplete files"));
         show_incomplete->setCheckable(true);
         show_incomplete->setChecked(false);
         connect(show_incomplete, SIGNAL(toggled(bool)), this, SLOT(showIncompleteChanged(bool)));
 
-        refresh = tool_bar->addAction(KIcon("view-refresh"), i18n("Refresh"), filter, SLOT(refresh()));
+        refresh = tool_bar->addAction(QIcon::fromTheme("view-refresh"), i18n("Refresh"), filter, SLOT(refresh()));
         refresh->setToolTip(i18n("Refresh media files"));
 
-        search_box = new KLineEdit(this);
-        search_box->setClearButtonShown(true);
-        search_box->setClickMessage(i18n("Search media files"));
+        search_box = new QLineEdit(this);
+        search_box->setClearButtonEnabled(true);
+        search_box->setPlaceholderText(i18n("Search media files"));
         connect(search_box, SIGNAL(textChanged(QString)), filter, SLOT(setFilterFixedString(QString)));
         hbox->addWidget(search_box);
 

@@ -17,11 +17,14 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  ***************************************************************************/
-#include <KLocale>
+#include "scanextender.h"
+
+#include <klocalizedstring.h>
 #include <torrent/job.h>
 #include <interfaces/torrentinterface.h>
 #include <datachecker/datacheckerjob.h>
-#include "scanextender.h"
+#include <KGuiItem>
+#include <KStandardGuiItem>
 
 
 
@@ -37,11 +40,11 @@ namespace kt
         setAutomaticRemove(dcj->isAutoImport());
         connect(job, SIGNAL(result(KJob*)), this, SLOT(finished(KJob*)));
 
-        cancel_button->setGuiItem(KStandardGuiItem::Cancel);
-        close_button->setGuiItem(KStandardGuiItem::Close);
+        KGuiItem::assign(cancel_button, KStandardGuiItem::cancel());
+        KGuiItem::assign(close_button, KStandardGuiItem::close());
         close_button->setEnabled(false);
-        connect(close_button, SIGNAL(clicked()), this, SLOT(closeRequested()));
-        connect(cancel_button, SIGNAL(clicked()), this, SLOT(cancelPressed()));
+        connect(close_button, &QPushButton::clicked, this, &ScanExtender::closeRequested);
+        connect(cancel_button, &QPushButton::clicked, this, &ScanExtender::cancelPressed);
 
         progress_bar->setFormat(i18n("Checked %v of %m chunks"));
         progress_bar->setValue(0);

@@ -23,11 +23,13 @@
 #include <QDataStream>
 #include <QApplication>
 #include <QFont>
-#include <kicon.h>
-#include <kmimetype.h>
+#include <QIcon>
+
 #include <util/log.h>
 #include <interfaces/torrentinterface.h>
 #include <interfaces/torrentfileinterface.h>
+#include <QMimeDatabase>
+#include <QMimeType>
 #include "downloadordermodel.h"
 
 using namespace bt;
@@ -71,7 +73,7 @@ namespace kt
         case Qt::DisplayRole:
             return tor->getTorrentFile(idx).getUserModifiedPath();
         case Qt::DecorationRole:
-            return KIcon(KMimeType::findByPath(tor->getTorrentFile(idx).getPath())->iconName());
+            return QIcon::fromTheme(QMimeDatabase().mimeTypeForFile(tor->getTorrentFile(idx).getPath()).iconName());
         case Qt::FontRole:
             if (!current_search_text.isEmpty() && tor->getTorrentFile(idx).getUserModifiedPath().contains(current_search_text, Qt::CaseInsensitive))
             {

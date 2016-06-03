@@ -21,10 +21,10 @@
 
 #include "magnetview.h"
 #include "magnetmodel.h"
-#include <KMenu>
+#include <QMenu>
 #include <QBoxLayout>
 #include <KLocalizedString>
-#include <KIcon>
+#include <QIcon>
 #include <KConfigGroup>
 #include <QHeaderView>
 #include <QTreeView>
@@ -60,11 +60,11 @@ namespace kt
         layout->addWidget(view);
 
         // context menu
-        menu = new KMenu(this);
-        start = menu->addAction(KIcon("kt-start"), i18n("Start Magnet"), this, SLOT(startMagnetDownload()));
-        stop = menu->addAction(KIcon("kt-stop"), i18n("Stop Magnet"), this, SLOT(stopMagnetDownload()));
+        menu = new QMenu(this);
+        start = menu->addAction(QIcon::fromTheme("kt-start"), i18n("Start Magnet"), this, SLOT(startMagnetDownload()));
+        stop = menu->addAction(QIcon::fromTheme("kt-stop"), i18n("Stop Magnet"), this, SLOT(stopMagnetDownload()));
         menu->addSeparator();
-        remove = menu->addAction(KIcon("kt-remove"), i18n("Remove Magnet"), this, SLOT(removeMagnetDownload()));
+        remove = menu->addAction(QIcon::fromTheme("kt-remove"), i18n("Remove Magnet"), this, SLOT(removeMagnetDownload()));
     }
 
     MagnetView::~MagnetView()
@@ -75,7 +75,7 @@ namespace kt
     {
         KConfigGroup g = cfg->group("MagnetView");
         QByteArray s = QByteArray::fromBase64(g.readEntry("state", QByteArray()));
-        if (!s.isNull())
+        if (!s.isEmpty())
         {
             QHeaderView* v = view->header();
             v->restoreState(s);

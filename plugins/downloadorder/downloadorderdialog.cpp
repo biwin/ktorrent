@@ -18,11 +18,12 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  ***************************************************************************/
-#include <kglobal.h>
+#include "downloadorderdialog.h"
+
 #include <kconfig.h>
+#include <kconfiggroup.h>
 #include <interfaces/torrentinterface.h>
 #include <QMenu>
-#include "downloadorderdialog.h"
 #include "downloadordermanager.h"
 #include "downloadorderplugin.h"
 #include "downloadordermodel.h"
@@ -31,12 +32,13 @@ namespace kt
 {
 
     DownloadOrderDialog::DownloadOrderDialog(DownloadOrderPlugin* plugin, bt::TorrentInterface* tor, QWidget* parent)
-        : KDialog(parent), tor(tor), plugin(plugin)
+        : QDialog(parent), tor(tor), plugin(plugin)
     {
-        setupUi(mainWidget());
-        setButtons(KDialog::Ok | KDialog::Cancel);
-        connect(this, SIGNAL(okClicked()), this, SLOT(commitDownloadOrder()));
-        setCaption(i18n("File Download Order"));
+        setupUi(this);
+        connect(buttonBox,SIGNAL(accepted()),this,SLOT(accept()));
+        connect(buttonBox,SIGNAL(rejected()),this,SLOT(reject()));
+        connect(this, SIGNAL(accepted()), this, SLOT(commitDownloadOrder()));
+        setWindowTitle(i18n("File Download Order"));
         m_top_label->setText(i18n("File download order for <b>%1</b>:", tor->getDisplayName()));
 
         DownloadOrderManager* dom = plugin->manager(tor);
@@ -48,13 +50,13 @@ namespace kt
         m_move_bottom->setEnabled(false);
         m_search_files->setEnabled(false);
 
-        m_move_up->setIcon(KIcon("go-up"));
+        m_move_up->setIcon(QIcon::fromTheme("go-up"));
         connect(m_move_up, SIGNAL(clicked()), this, SLOT(moveUp()));
-        m_move_down->setIcon(KIcon("go-down"));
+        m_move_down->setIcon(QIcon::fromTheme("go-down"));
         connect(m_move_down, SIGNAL(clicked()), this, SLOT(moveDown()));
-        m_move_top->setIcon(KIcon("go-top"));
+        m_move_top->setIcon(QIcon::fromTheme("go-top"));
         connect(m_move_top, SIGNAL(clicked()), this, SLOT(moveTop()));
-        m_move_bottom->setIcon(KIcon("go-bottom"));
+        m_move_bottom->setIcon(QIcon::fromTheme("go-bottom"));
         connect(m_move_bottom, SIGNAL(clicked()), this, SLOT(moveBottom()));
 
         m_order->setSelectionMode(QAbstractItemView::ContiguousSelection);
@@ -68,7 +70,7 @@ namespace kt
             model->initOrder(dom->downloadOrder());
         m_order->setModel(model);
 
-        QSize s = KGlobal::config()->group("DownloadOrderDialog").readEntry("size", size());
+        QSize s = KSharedConfig::openConfig()->group("DownloadOrderDialog").readEntry("size", size());
         resize(s);
 
         connect(m_order->selectionModel(), SIGNAL(selectionChanged(QItemSelection, QItemSelection)),
@@ -88,7 +90,7 @@ namespace kt
 
     DownloadOrderDialog::~DownloadOrderDialog()
     {
-        KGlobal::config()->group("DownloadOrderDialog").writeEntry("size", size());
+        KSharedConfig::openConfig()->group("DownloadOrderDialog").writeEntry("size", size());
     }
 
     void DownloadOrderDialog::commitDownloadOrder()
@@ -186,19 +188,17 @@ namespace kt
 
     void DownloadOrderDialog::customOrderEnableToggled(bool on)
     {
+        m_search_files->setEnabled(on);
+        m_sort_by->setEnabled(on);
         if (!on)
         {
             m_move_down->setEnabled(false);
             m_move_up->setEnabled(false);
             m_move_top->setEnabled(false);
             m_move_down->setEnabled(false);
-            m_search_files->setEnabled(false);
-            m_sort_by->setEnabled(false);
         }
         else
         {
-            m_search_files->setEnabled(true);
-            m_sort_by->setEnabled(true);
             itemSelectionChanged(m_order->selectionModel()->selection(), QItemSelection());
         }
     }

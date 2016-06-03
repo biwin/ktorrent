@@ -17,13 +17,16 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  ***************************************************************************/
-#include <qdatetime.h>
+#include "functions.h"
+
+#include <QDateTime>
 #include <QNetworkInterface>
-#include <klocale.h>
-#include <kglobal.h>
-#include <kstandarddirs.h>
+#include <QStandardPaths>
+#include <QFileInfo>
+#include <QDir>
+#include <klocalizedstring.h>
+
 #include <solid/device.h>
-#include <solid/networkinterface.h>
 #include <util/functions.h>
 #include <download/downloader.h>
 #include <download/webseed.h>
@@ -47,7 +50,6 @@
 #include <torrent/timeestimator.h>
 #include <interfaces/queuemanagerinterface.h>
 #include "settings.h"
-#include "functions.h"
 
 
 using namespace bt;
@@ -56,13 +58,29 @@ namespace kt
 {
 
 
-    QString DataDir()
+    QString DataDir(CreationMode mode)
     {
-        QString str = KGlobal::dirs()->saveLocation("data", "ktorrent");
-        if (!str.endsWith(bt::DirSeparator()))
-            return str + bt::DirSeparator();
-        else
-            return str;
+        QString dataDirPath = QStandardPaths::writableLocation(QStandardPaths::DataLocation);
+        if (mode == CreateIfNotExists)
+        {
+            QFileInfo fileInfo(dataDirPath);
+            if (!fileInfo.exists())
+            {
+                QString ktorrent4DataFolder = QDir::homePath() + QLatin1String("/.kde/share/apps/ktorrent");
+                if (!QFile::exists(ktorrent4DataFolder))
+                {
+                    ktorrent4DataFolder = QDir::homePath() + QLatin1String("/.kde4/share/apps/ktorrent");
+                    if (!QFile::exists(ktorrent4DataFolder))
+                        ktorrent4DataFolder.clear();
+                }
+                if (ktorrent4DataFolder.isEmpty() || !QFile::rename(ktorrent4DataFolder, dataDirPath))
+                    fileInfo.dir().mkdir(fileInfo.fileName());
+            }
+        }
+        //if (!str.endsWith(bt::DirSeparator()))
+            return dataDirPath + bt::DirSeparator();
+        //else
+        //    return str;
     }
 
     Uint16 RandomGoodPort()
@@ -100,7 +118,7 @@ namespace kt
         dht::DHTBase& ht = Globals::instance().getDHT();
         if (Settings::dhtSupport() && !ht.isRunning())
         {
-            ht.start(kt::DataDir() + "dht_table", kt::DataDir() + "dht_key", Settings::dhtPort());
+            ht.start(kt::DataDir() + QLatin1String("dht_table"), kt::DataDir() + QLatin1String("dht_key"), Settings::dhtPort());
         }
         else if (!Settings::dhtSupport() && ht.isRunning())
         {
@@ -110,7 +128,7 @@ namespace kt
         {
             Out(SYS_GEN | LOG_NOTICE) << "Restarting DHT with new port " << Settings::dhtPort() << endl;
             ht.stop();
-            ht.start(kt::DataDir() + "dht_table", kt::DataDir() + "dht_key", Settings::dhtPort());
+            ht.start(kt::DataDir() + QLatin1String("dht_table"), kt::DataDir() + QLatin1String("dht_key"), Settings::dhtPort());
         }
 
         UTPex::setEnabled(Settings::pexEnabled());
@@ -142,22 +160,7 @@ namespace kt
 
         bt::TorrentControl::setDataCheckWhenCompleted(Settings::checkWhenFinished());
         bt::TorrentControl::setMinimumDiskSpace(Settings::minDiskSpace());
-
-
-        if (Settings::networkInterface() == 0)
-        {
-            SetNetworkInterface(QString::null);
-        }
-        else
-        {
-            QList<QNetworkInterface> iface_list = QNetworkInterface::allInterfaces();
-            int iface = Settings::networkInterface();
-            if (iface > iface_list.count())
-                SetNetworkInterface(QString::null);
-            else
-                SetNetworkInterface(iface_list[iface - 1].name());
-        }
-
+        bt::SetNetworkInterface(Settings::networkInterface());
         net::Socks::setSocksEnabled(Settings::socksEnabled());
         net::Socks::setSocksVersion(Settings::socksVersion());
         net::Socks::setSocksServerAddress(Settings::socksProxy(), Settings::socksPort());
@@ -174,9 +177,9 @@ namespace kt
 
     QString TorrentFileFilter(bool all_files_included)
     {
-        QString ret = QString("*.torrent|%1").arg(i18n("Torrents"));
+        QString ret = i18nc("*.torrent", "Torrents") + QLatin1String(" (*.torrent)");
         if (all_files_included)
-            ret += "\n*|" + i18n("All files");
+            ret += QLatin1String(";;") + i18n("All files") + QLatin1String(" (*)");
         return ret;
     }
 

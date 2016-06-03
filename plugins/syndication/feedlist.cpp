@@ -22,8 +22,8 @@
 #include <QDir>
 #include <QTime>
 #include <QTextStream>
-#include <kicon.h>
-#include <klocale.h>
+#include <QIcon>
+#include <klocalizedstring.h>
 #include <util/log.h>
 #include <util/fileops.h>
 #include <util/functions.h>
@@ -175,9 +175,9 @@ namespace kt
             return i18np("%2\n1 active filter", "%2\n%1 active filters", f->numFilters(), f->displayName());
         case Qt::DecorationRole:
             if (f->feedStatus() == Feed::FAILED_TO_DOWNLOAD)
-                return KIcon("dialog-error");
+                return QIcon::fromTheme("dialog-error");
             else
-                return KIcon("application-rss+xml");
+                return QIcon::fromTheme("application-rss+xml");
         case Qt::ToolTipRole:
             if (f->feedStatus() == Feed::FAILED_TO_DOWNLOAD)
                 return i18n("<b>%1</b><br/><br/>Download failed: <b>%2</b>", f->feedData()->link(), f->errorString());

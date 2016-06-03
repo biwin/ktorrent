@@ -27,8 +27,8 @@
 #include <QStringList>
 #include <QTextStream>
 #include <taglib/tag.h>
-#include <KLocale>
-#include <KIcon>
+#include <klocalizedstring.h>
+#include <QIcon>
 #include <util/log.h>
 #include "mediaplayer.h"
 
@@ -165,7 +165,7 @@ namespace kt
         if (role == Qt::DecorationRole && index.column() == 0)
         {
             if (file == player->getCurrentSource())
-                return KIcon("arrow-right");
+                return QIcon::fromTheme("arrow-right");
         }
 
         return QVariant();
@@ -229,8 +229,7 @@ namespace kt
         {
             if (index.isValid() && index.column() == 0)
             {
-                QString text = files.at(index.row()).first.path();
-                urls.append(text);
+                urls << QUrl::fromLocalFile(files.at(index.row()).first.path());
                 dragged_rows.append(index.row());
             }
         }

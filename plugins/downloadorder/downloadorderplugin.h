@@ -36,7 +36,7 @@ namespace kt
     {
         Q_OBJECT
     public:
-        DownloadOrderPlugin(QObject* parent, const QStringList& args);
+        DownloadOrderPlugin(QObject* parent, const QVariantList& args);
         virtual ~DownloadOrderPlugin();
 
         virtual bool versionCheck(const QString& version) const;
@@ -60,7 +60,7 @@ namespace kt
         void torrentRemoved(bt::TorrentInterface* tc);
 
     private:
-        KAction* download_order_action;
+        QAction * download_order_action;
         bt::PtrMap<bt::TorrentInterface*, DownloadOrderManager> managers;
     };
 

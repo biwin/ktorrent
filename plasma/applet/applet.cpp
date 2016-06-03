@@ -25,7 +25,7 @@
 #include <QDBusConnectionInterface>
 #include <QDBusMessage>
 #include <KConfigDialog>
-#include <KLocale>
+#include <klocalizedstring.h>
 #include <KRun>
 #include <KWindowSystem>
 #if (PLASMA_VERSION_MAJOR < 3)
@@ -100,9 +100,9 @@ namespace ktplasma
         QGraphicsLinearLayout* line = new QGraphicsLinearLayout(0);
 
 #if (PLASMA_VERSION_MAJOR < 3)
-        icon = new Plasma::Icon(KIcon("ktorrent"), QString(), this);
+        icon = new Plasma::Icon(QIcon::fromTheme("ktorrent"), QString(), this);
 #else
-        icon = new Plasma::IconWidget(KIcon("ktorrent"), QString(), this);
+        icon = new Plasma::IconWidget(QIcon::fromTheme("ktorrent"), QString(), this);
 #endif
         int icon_size = IconSize(KIconLoader::Desktop);
         icon->setMaximumSize(icon_size, icon_size);
@@ -190,7 +190,7 @@ namespace ktplasma
         updateNavigation();
         if (connected)
         {
-            if (current_source.isNull()) // don't override dragged item
+            if (current_source.isEmpty()) // don't override dragged item
                 current_source = config().readEntry("current_source", QString());
             initSource();
             // addSource will be called for each sorce if reconnected
@@ -253,7 +253,7 @@ namespace ktplasma
         foreach (const QString& s, sources)
             names << engine->query(s).value("name").toString();
         ui.torrent_to_display->addItems(names);
-        if (current_source.isNull())
+        if (current_source.isEmpty())
             initSource();
     }
 
@@ -329,7 +329,7 @@ namespace ktplasma
         // note: we get this event for each source also when app reconnects
         if (!sources.contains(s))
             sources.append(s);
-        if (current_source.isNull() || current_source == s)
+        if (current_source.isEmpty() || current_source == s)
             initSource();
         else if (!sources.contains(current_source))
             clearData();

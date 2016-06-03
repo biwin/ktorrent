@@ -124,7 +124,7 @@ namespace kt
         if (!loadedAndRunning() || !IPBlockingPluginSettings::autoUpdate())
             return;
 
-        KConfigGroup g = KGlobal::config()->group("IPFilterAutoUpdate");
+        KConfigGroup g = KSharedConfig::openConfig()->group("IPFilterAutoUpdate");
         bool ok = g.readEntry("last_update_ok", false);
         QDateTime now = QDateTime::currentDateTime();
         if (!ok)
@@ -138,7 +138,7 @@ namespace kt
         {
             QDateTime last_updated = g.readEntry("last_updated", QDateTime());
             QDateTime next_update;
-            if (last_updated.isNull())
+            if (last_updated.isEmpty())
                 next_update = now.addDays(IPBlockingPluginSettings::autoUpdateInterval());
             else
                 next_update = QDateTime(last_updated).addDays(IPBlockingPluginSettings::autoUpdateInterval());

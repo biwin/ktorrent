@@ -1,10 +1,11 @@
 set(ktzeroconfplugin_SRC zeroconfplugin.cpp torrentservice.cpp)
 
-# kde4_add_ui_files(ktzeroconfplugin_SRC zeroconfpref.ui searchbar.ui)
-#kde4_add_kcfg_files(ktzeroconfplugin_SRC zeroconfpluginsettings.kcfgc)
-kde4_add_plugin(ktzeroconfplugin ${ktzeroconfplugin_SRC})
+# ki18n_wrap_ui(ktzeroconfplugin_SRC zeroconfpref.ui searchbar.ui)
+#kconfig_add_kcfg_files(ktzeroconfplugin_SRC zeroconfpluginsettings.kcfgc)
+add_library(ktorrent_zeroconf MODULE ${ktzeroconfplugin_SRC})
 
-target_link_libraries(ktzeroconfplugin ${LIBKTORRENT_LIBRARIES} ktcore ${KDE4_KDNSSD_LIBS} ${KDE4_KPARTS_LIBS})
-install(TARGETS ktzeroconfplugin  DESTINATION ${PLUGIN_INSTALL_DIR} )
-install(FILES ktzeroconfplugin.desktop  DESTINATION  ${SERVICES_INSTALL_DIR} )
+kcoreaddons_desktop_to_json(ktorrent_zeroconf ktorrent_zeroconf.desktop)
+
+target_link_libraries(ktorrent_zeroconf ktorrent ktcore KF5::DNSSD KF5::Parts)
+install(TARGETS ktorrent_zeroconf  DESTINATION ${KTORRENT_PLUGIN_INSTALL_DIR} )
 
