@@ -44,14 +44,13 @@ using namespace bt;
 MagnetTest::MagnetTest(const bt::MagnetLink& mlink, QObject* parent) : QObject(parent), mlink(mlink)
 {
     upnp = new bt::UPnPMCastSocket();
-    connect(upnp, SIGNAL(discovered(bt::UPnPRouter*)), this, SLOT(routerDiscovered(bt::UPnPRouter*)));
+    connect(upnp, &bt::UPnPMCastSocket::discovered, this, &MagnetTest::routerDiscovered);
 
     mdownloader = new MagnetDownloader(mlink, this);
-    connect(mdownloader, SIGNAL(foundMetaData(bt::MagnetDownloader*, QByteArray)),
-            this, SLOT(foundMetaData(bt::MagnetDownloader*, QByteArray)));
+    connect(mdownloader, &MagnetDownloader::foundMetadata, this, &MagnetTest::foundMetaData);
 
     QTimer::singleShot(0, this, SLOT(start()));
-    connect(&timer, SIGNAL(timeout()), this, SLOT(update()));
+    connect(&timer, &QTimer::timeout, this, &MagnetTest::update);
 }
 
 MagnetTest::~MagnetTest()
@@ -134,23 +133,23 @@ void MagnetTest::foundMetaData(MagnetDownloader* md, const QByteArray& data)
     {
         BEncoder enc(&fptr);
         enc.beginDict();
-        Qlist<QUrl> trs = mlink.trackers();
+        QList<QUrl> trs = mlink.trackers();
         if (trs.count())
         {
-            enc.write("announce");
-            enc.write(trs.first().prettyUrl());
+            enc.write(QByteArrayLiteral("announce"));
+            enc.write(trs.first().toEncoded());
             if (trs.count() > 1)
             {
-                enc.write("announce-list");
+                enc.write(QByteArrayLiteral("announce-list"));
                 enc.beginList();
                 foreach (const QUrl& u, trs)
                 {
-                    enc.write(u.toDisplayString());
+                    enc.write(u.toEncoded());
                 }
                 enc.end();
             }
         }
-        enc.write("info");
+        enc.write(QByteArrayLiteral("info"));
         fptr.write(data.data(), data.size());
         enc.end();
         QTimer::singleShot(0, qApp, SLOT(quit()));

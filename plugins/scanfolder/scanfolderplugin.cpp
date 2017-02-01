@@ -17,7 +17,7 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.           *
  ***************************************************************************/
-#include <kgenericfactory.h>
+#include <kpluginfactory.h>
 
 #include <interfaces/coreinterface.h>
 #include <interfaces/guiinterface.h>
@@ -29,9 +29,7 @@
 
 #include <QDir>
 
-#include <kmessagebox.h>
 #include <klocalizedstring.h>
-#include <kglobal.h>
 
 #include "scanfolder.h"
 #include "scanfolderplugin.h"
@@ -42,12 +40,12 @@
 
 using namespace bt;
 
-K_EXPORT_COMPONENT_FACTORY(ktscanfolderplugin, KGenericFactory<kt::ScanFolderPlugin>("scanfolderplugin"))
+K_PLUGIN_FACTORY_WITH_JSON(ktorrent_scanfolder, "ktorrent_scanfolder.json", registerPlugin<kt::ScanFolderPlugin>();)
 
 namespace kt
 {
 
-    ScanFolderPlugin::ScanFolderPlugin(QObject* parent, const QStringList& args)
+    ScanFolderPlugin::ScanFolderPlugin(QObject* parent, const QVariantList& args)
         : Plugin(parent),
           tlq(0)
     {
@@ -64,7 +62,7 @@ namespace kt
         LogSystemManager::instance().registerSystem(i18nc("plugin name", "Scan Folder"), SYS_SNF);
         tlq = new TorrentLoadQueue(getCore(), this);
         scanner = new ScanThread();
-        connect(scanner, SIGNAL(found(KUrl::List)), tlq, SLOT(add(KUrl::List)), Qt::QueuedConnection);
+        connect(scanner, SIGNAL(found(QList<QUrl>)), tlq, SLOT(add(QList<QUrl>)), Qt::QueuedConnection);
         pref = new ScanFolderPrefPage(this, 0);
         getGUI()->addPrefPage(pref);
         connect(getCore(), SIGNAL(settingsChanged()), this, SLOT(updateScanFolders()));
@@ -112,3 +110,5 @@ namespace kt
         return version == KT_VERSION_MACRO;
     }
 }
+
+#include "scanfolderplugin.moc"

@@ -19,10 +19,11 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  ***************************************************************************/
 #include <QHeaderView>
+#include <QInputDialog>
+#include <QLocale>
 #include <KRun>
-#include <KInputDialog>
 #include <util/log.h>
-#include "feed.h"
+#include "ktfeed.h"
 #include "feedwidget.h"
 #include "feedwidgetmodel.h"
 #include "managefiltersdlg.h"
@@ -135,7 +136,7 @@ namespace kt
             connect(feed, SIGNAL(updated()), this, SLOT(updated()));
             connect(feed, SIGNAL(feedRenamed(Feed*)), this, SLOT(onFeedRenamed(Feed*)));
 
-            m_url->setText(QString("<b>%1</b>").arg(feed->feedUrl().prettyUrl()));
+            m_url->setText(QString("<b>%1</b>").arg(feed->feedUrl().toDisplayString()));
             m_refresh_rate->setValue(feed->refreshRate());
             updated();
             selectionChanged(m_item_list->selectionModel()->selection(), QItemSelection());
@@ -189,7 +190,7 @@ namespace kt
 
         bool ok = false;
         QString cookie = feed->authenticationCookie();
-        QString nc = KInputDialog::getText(i18n("Authentication Cookie"), i18n("Enter the new authentication cookie"), cookie, &ok);
+        QString nc = QInputDialog::getText(0, i18n("Authentication Cookie"), i18n("Enter the new authentication cookie"), QLineEdit::Normal, cookie, &ok);
         if (ok)
         {
             feed->setAuthenticationCookie(nc);
@@ -209,8 +210,8 @@ namespace kt
             {
                 m_item_view->setHtml(item_template
                                      .arg(item->title())
-                                     .arg(KGlobal::locale()->formatDateTime(QDateTime::fromTime_t(item->datePublished())))
-                                     .arg(item->description()), feed->feedData()->link());
+                                     .arg(QLocale().toString(QDateTime::fromTime_t(item->datePublished()), QLocale::ShortFormat))
+                                     .arg(item->description()), QUrl(feed->feedData()->link()));
             }
         }
     }
@@ -248,7 +249,7 @@ namespace kt
     void FeedWidget::linkClicked(const QUrl& url)
     {
         Out(SYS_SYN | LOG_DEBUG) << "linkClicked " << url.toString() << endl;
-        new KRun(KUrl(url), QApplication::activeWindow());
+        new KRun(url, QApplication::activeWindow());
     }
 
 

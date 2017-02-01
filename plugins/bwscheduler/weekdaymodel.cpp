@@ -20,8 +20,7 @@
  ***************************************************************************/
 #include "weekdaymodel.h"
 
-#include <kglobal.h>
-#include <kcalendarsystem.h>
+#include <QLocale>
 
 namespace kt
 {
@@ -54,8 +53,7 @@ namespace kt
 
         if (role == Qt::DisplayRole)
         {
-            const KCalendarSystem* cal = KGlobal::locale()->calendar();
-            return cal->weekDayName(index.row() + 1);
+            return QLocale::system().dayName(index.row() + 1);
         }
         else if (role == Qt::CheckStateRole)
         {

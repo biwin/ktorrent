@@ -18,12 +18,15 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  ***************************************************************************/
-#include <kgenericfactory.h>
+#include <kpluginfactory.h>
 #include <kactioncollection.h>
 #include <kfiledialog.h>
+#include <klocalizedstring.h>
 #include <kmainwindow.h>
 #include <kstandarddirs.h>
 #include <kmessagebox.h>
+#include <kglobal.h>
+#include <kconfiggroup.h>
 #include <kio/copyjob.h>
 #include <kross/core/manager.h>
 #include <kross/core/interpreter.h>
@@ -45,14 +48,14 @@
 #include "script.h"
 #include "api/scriptingmodule.h"
 
-K_EXPORT_COMPONENT_FACTORY(ktscriptingplugin, KGenericFactory<kt::ScriptingPlugin>("ktscriptingplugin"))
+K_PLUGIN_FACTORY_WITH_JSON(ktorrent_scripting, "ktorrent_scripting.json", registerPlugin<kt::ScriptingPlugin>();)
 
 using namespace bt;
 
 namespace kt
 {
 
-    ScriptingPlugin::ScriptingPlugin(QObject* parent, const QStringList& args)
+    ScriptingPlugin::ScriptingPlugin(QObject* parent, const QVariantList& args)
         : Plugin(parent)
     {
         Q_UNUSED(args);
@@ -185,7 +188,7 @@ namespace kt
                          "\n *.rb *.py *.js | " + i18n("Scripts") +
                          "\n* |" + i18n("All files");
 
-        KUrl url = KFileDialog::getOpenUrl(KUrl("kfiledialog:///addScript"), filter, getGUI()->getMainWindow());
+        QUrl url = KFileDialog::getOpenUrl(QUrl("kfiledialog:///addScript"), filter, getGUI()->getMainWindow());
         if (!url.isValid())
             return;
 
@@ -193,12 +196,12 @@ namespace kt
         {
             if (url.isLocalFile())
             {
-                model->addScript(url.pathOrUrl());
+                model->addScript(url.toLocalFile());
             }
             else
             {
                 QString script_dir = kt::DataDir() + "scripts" + bt::DirSeparator();
-                KIO::CopyJob* j = KIO::copy(url, KUrl(script_dir + url.fileName()));
+                KIO::CopyJob* j = KIO::copy(url, QUrl::fromLocalFile(script_dir + url.fileName()));
                 connect(j, SIGNAL(result(KJob*)), this, SLOT(scriptDownloadFinished(KJob*)));
             }
         }
@@ -258,3 +261,5 @@ namespace kt
         return version == KT_VERSION_MACRO;
     }
 }
+
+#include "scriptingplugin.moc"

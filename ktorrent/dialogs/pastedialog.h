@@ -21,7 +21,7 @@
 #ifndef PASTEDIALOG_H
 #define PASTEDIALOG_H
 
-#include <KDialog>
+#include <QDialog>
 #include <KSharedConfig>
 #include "ui_pastedlgbase.h"
 
@@ -34,7 +34,7 @@ namespace kt
      * @author Ivan Vasic
      * @brief Torrent URL paste dialog
      **/
-    class PasteDialog: public KDialog, public Ui_PasteDlgBase
+    class PasteDialog: public QDialog, public Ui_PasteDlgBase
     {
         Q_OBJECT
     public:
@@ -44,12 +44,12 @@ namespace kt
         /**
         * Load the state of the dialog
         */
-        void loadState(KSharedConfigPtr cfg);
+        void loadState(KSharedConfig::Ptr cfg);
 
         /**
         * Save the state of the dialog
         */
-        void saveState(KSharedConfigPtr cfg);
+        void saveState(KSharedConfig::Ptr cfg);
 
     public slots:
         virtual void accept();

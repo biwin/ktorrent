@@ -23,6 +23,8 @@
 #include <util/log.h>
 #include <KRun>
 #include <klocalizedstring.h>
+#include <kdialog.h>
+#include <kiconloader.h>
 #include <QMenu>
 #include <QAction>
 #include <KActionCollection>
@@ -203,7 +205,7 @@ namespace kt
         {
             Script* s = model->scriptForIndex(idx);
             if (s)
-                new KRun(KUrl(s->scriptFile()), 0, 0, true, true);
+                new KRun(QUrl::fromLocalFile(s->scriptFile()), 0);
         }
 
     }

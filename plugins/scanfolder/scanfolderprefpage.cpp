@@ -20,9 +20,8 @@
 #include "scanfolderplugin.h"
 #include "scanfolderprefpage.h"
 
+#include <QFileDialog>
 #include <klocalizedstring.h>
-#include <kglobal.h>
-#include <kfiledialog.h>
 #include <util/functions.h>
 #include <groups/groupmanager.h>
 #include <interfaces/coreinterface.h>
@@ -107,10 +106,9 @@ namespace kt
 
     void ScanFolderPrefPage::addPressed()
     {
-        KUrl dir = KFileDialog::getExistingDirectoryUrl(KUrl("kfiledialog:///openTorrent"), this);
-        if (dir.isValid())
+        QString p = QFileDialog::getExistingDirectory(this);
+        if (!p.isEmpty())
         {
-            QString p = dir.toLocalFile();
             if (!p.endsWith(bt::DirSeparator()))
                 p += bt::DirSeparator();
             m_folders->addItem(new QListWidgetItem(QIcon::fromTheme("folder"), p));

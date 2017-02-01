@@ -16,9 +16,9 @@ include(ECMInstallIcons)
 
 find_package(Qt5 ${QT_MIN_VERSION} CONFIG REQUIRED Core DBus Widgets Script)
 
-find_package(KF5 5.15 REQUIRED I18n KIO XmlGui Notifications NotifyConfig Solid Config CoreAddons DocTools Kross KCMUtils Sonnet DBusAddons Crash Archive KDELibs4Support)
+find_package(KF5 5.15 REQUIRED I18n KIO XmlGui Notifications NotifyConfig Solid Config CoreAddons DocTools Kross KCMUtils DBusAddons Crash Archive KDELibs4Support)
 
-find_package(LibKTorrent 1.9.50 CONFIG REQUIRED)
+find_package(KF5Torrent 1.9.50 CONFIG REQUIRED)
 find_package(Boost REQUIRED)
 
 #
@@ -46,7 +46,7 @@ add_subdirectory(plugins)
 add_subdirectory(ktorrent)
 #add_subdirectory(ktupnptest)
 #add_subdirectory(plasma)
-#add_subdirectory(ktmagnetdownloader)
+add_subdirectory(ktmagnetdownloader)
 add_subdirectory(doc)
 
 feature_summary(WHAT ALL INCLUDE_QUIET_PACKAGES FATAL_ON_MISSING_REQUIRED_PACKAGES)

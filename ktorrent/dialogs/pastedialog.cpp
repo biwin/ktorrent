@@ -27,15 +27,16 @@
 #include <KMessageBox>
 #include <klocalizedstring.h>
 #include <KStandardGuiItem>
+#include <KConfigGroup>
 #include <ksharedconfig.h>
 #include <groups/groupmanager.h>
 
 namespace kt
 {
     PasteDialog::PasteDialog(Core* core, QWidget* parent, Qt::WFlags fl)
-        : KDialog(parent, fl)
+        : QDialog(parent, fl)
     {
-        setupUi(mainWidget());
+        setupUi(this);
         setWindowTitle(i18n("Open an URL"));
 
         m_core = core;
@@ -43,6 +44,9 @@ namespace kt
         QString text = cb->text(QClipboard::Clipboard);
 
         QUrl url = QUrl(text);
+
+        connect(m_buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
+        connect(m_buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
         if (url.isValid())
             m_url->setText(text);
@@ -73,14 +77,14 @@ namespace kt
         m_groups->addItems(grps);
     }
 
-    void PasteDialog::loadState(KSharedConfigPtr cfg)
+    void PasteDialog::loadState(KSharedConfig::Ptr cfg)
     {
         KConfigGroup g = cfg->group("PasteDlg");
         m_silently->setChecked(g.readEntry("silently", false));
         m_groups->setCurrentIndex(g.readEntry("group", 0));
     }
 
-    void PasteDialog::saveState(KSharedConfigPtr cfg)
+    void PasteDialog::saveState(KSharedConfig::Ptr cfg)
     {
         KConfigGroup g = cfg->group("PasteDlg");
         g.writeEntry("silently", m_silently->isChecked());

@@ -18,9 +18,9 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  ***************************************************************************/
 #include <QHBoxLayout>
+#include <QInputDialog>
 #include <QToolButton>
 #include <kmessagebox.h>
-#include <kinputdialog.h>
 #include <kmainwindow.h>
 #include <magnet/magnetlink.h>
 #include <interfaces/functions.h>
@@ -31,7 +31,7 @@
 #include <syndication/loader.h>
 #include "syndicationactivity.h"
 #include "feedwidget.h"
-#include "feed.h"
+#include "ktfeed.h"
 #include "feedlist.h"
 #include "feedlistview.h"
 #include "filter.h"
@@ -115,8 +115,9 @@ namespace kt
     void SyndicationActivity::addFeed()
     {
         bool ok = false;
-        QString url = KInputDialog::getText(i18n("Enter the URL"), i18n("Please enter the URL of the RSS or Atom feed."),
-                                            QString(), &ok, sp->getGUI()->getMainWindow());
+        QString url = QInputDialog::getText(sp->getGUI()->getMainWindow(), i18n("Enter the URL"),
+                                            i18n("Please enter the URL of the RSS or Atom feed."),
+                                            QLineEdit::Normal, QString(), &ok);
         if (!ok || url.isEmpty())
             return;
 
@@ -126,12 +127,12 @@ namespace kt
         {
             FeedRetriever* retr = new FeedRetriever();
             retr->setAuthenticationCookie(sl.last());
-            loader->loadFrom(KUrl(sl.first()), retr);
+            loader->loadFrom(QUrl(sl.first()), retr);
             downloads.insert(loader, url);
         }
         else
         {
-            loader->loadFrom(KUrl(url));
+            loader->loadFrom(QUrl(url));
             downloads.insert(loader, url);
         }
     }
@@ -150,8 +151,8 @@ namespace kt
         {
             QString ddir = kt::DataDir() + "syndication/";
             Feed* f = new Feed(downloads[loader], feed, Feed::newFeedDir(ddir));
-            connect(f, SIGNAL(downloadLink(const KUrl&, const QString&, const QString&, const QString&, bool)),
-                    this, SLOT(downloadLink(const KUrl&, const QString&, const QString&, const QString&, bool)));
+            connect(f, SIGNAL(downloadLink(const QUrl&, const QString&, const QString&, const QString&, bool)),
+                    this, SLOT(downloadLink(const QUrl&, const QString&, const QString&, const QString&, bool)));
             f->save();
             feed_list->addFeed(f);
             feed_widget->setFeed(f);
@@ -186,20 +187,20 @@ namespace kt
     }
 
 
-    void SyndicationActivity::downloadLink(const KUrl& url,
+    void SyndicationActivity::downloadLink(const QUrl& url,
                                            const QString& group,
                                            const QString& location,
                                            const QString& move_on_completion,
                                            bool silently)
     {
-        if (url.protocol() == "magnet")
+        if (url.scheme() == "magnet")
         {
             MagnetLinkLoadOptions options;
             options.silently = silently;
             options.group = group;
             options.location = location;
             options.move_on_completion = move_on_completion;
-            sp->getCore()->load(bt::MagnetLink(url.prettyUrl()), options);
+            sp->getCore()->load(bt::MagnetLink(url), options);
         }
         else
         {
